@@ -176,7 +176,8 @@ General parameters of SMS daemon
 
 .. config:option:: MaxRetries
 
-    How many times will SMSD try to resend message if sending fails.
+    How many times will SMSD try to resend message if sending fails. This 
+    is tracked per message and currently supported only with SQL backends.
 
     Default is 1.
 
@@ -186,7 +187,7 @@ General parameters of SMS daemon
     busy sending SMSes. Normally a test for received SMSes is done every
     :config:option:`CommTimeout` seconds and after each sent SMS.
 
-    Default is 0 (not used).
+    Default is 15.
 
 .. config:option:: StatusFrequency
 

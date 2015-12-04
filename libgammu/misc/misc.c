@@ -18,6 +18,8 @@
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
 #  include <locale.h>
+#  define gmtime_r(x, y) gmtime_s(y, x)
+#  define localtime_r(x, y) localtime_s(y, x)
 #endif
 #ifdef HAVE_SYS_UTSNAME_H
 #  include <sys/utsname.h>
@@ -255,7 +257,6 @@ void GetTimeDifference(unsigned long diff, GSM_DateTime *DT, gboolean Plus, int 
 	}
 
 	Fill_GSM_DateTime(DT, t_time);
-	DT->Year = DT->Year;
 	dbgprintf(NULL, "EndTime: %02i-%02i-%04i %02i:%02i:%02i\n",
 		DT->Day,DT->Month,DT->Year,DT->Hour,DT->Minute,DT->Second);
 }

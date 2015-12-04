@@ -220,7 +220,7 @@ GSM_Error S60_SplitValues(GSM_Protocol_Message *msg, GSM_StateMachine *s)
 	}
 
 	while ((pos - msg->Buffer) < (ssize_t)msg->Length) {
-		if (i >  sizeof(Priv->MessageParts) / sizeof(Priv->MessageParts[0])) {
+		if (i >=  sizeof(Priv->MessageParts) / sizeof(Priv->MessageParts[0])) {
 			smprintf(s, "Too many reply parts!\n");
 			return ERR_MOREMEMORY;
 		}
@@ -412,6 +412,7 @@ static GSM_Error S60_Reply_GetInfo(GSM_Protocol_Message *msg, GSM_StateMachine *
 	GSM_Phone_S60Data *Priv = &s->Phone.Data.Priv.S60;
 	GSM_Error error;
 	char *pos;
+	int signal_value;
 	GSM_SignalQuality *Signal = s->Phone.Data.SignalQuality;
 	GSM_BatteryCharge *BatteryCharge = s->Phone.Data.BatteryCharge;
 
@@ -469,7 +470,12 @@ static GSM_Error S60_Reply_GetInfo(GSM_Protocol_Message *msg, GSM_StateMachine *
 	} else if (Signal != NULL && strcmp(Priv->MessageParts[0], "signal_dbm") == 0) {
 		Signal->SignalStrength = atoi(Priv->MessageParts[1]);
 	} else if (Signal != NULL && strcmp(Priv->MessageParts[0], "signal_bars") == 0) {
-		Signal->SignalPercent = 100 * 7 / atoi(Priv->MessageParts[1]);
+		signal_value = atoi(Priv->MessageParts[1]);
+		if (signal_value != 0) {
+			Signal->SignalPercent = 100 * 7 / signal_value;
+		} else {
+			Signal->SignalPercent = 0;
+		}
 	} else if (BatteryCharge != NULL && strcmp(Priv->MessageParts[0], "battery") == 0) {
 		BatteryCharge->BatteryPercent = atoi(Priv->MessageParts[1]);
 	}
@@ -2184,7 +2190,8 @@ GSM_Phone_Functions S60Phone = {
 	NOTSUPPORTED,			/* 	GetGPRSAccessPoint	*/
 	NOTSUPPORTED,			/* 	SetGPRSAccessPoint	*/
 	S60_GetScreenshot,
-	NOTSUPPORTED			/* 	SetPower		*/
+	NOTSUPPORTED,			/* 	SetPower		*/
+	NOTSUPPORTED			/* 	PostConnect	*/
 };
 #endif
 

@@ -1082,36 +1082,29 @@ GSM_Error ATGEN_DecodeDateTime(GSM_StateMachine *s, GSM_DateTime *dt, unsigned c
 		dt->Day = 0;
 	}
 
-	/* Do we have time? */
-	if (time_start != NULL) {
-		dt->Hour = atoi(time_start);
-		pos = strchr(time_start, ':');
-		if (pos == NULL) return ERR_UNKNOWN;
+	/* Parse time */
+	dt->Hour = atoi(time_start);
+	pos = strchr(time_start, ':');
+	if (pos == NULL) return ERR_UNKNOWN;
+	pos++;
+	dt->Minute = atoi(pos);
+	pos = strchr(pos, ':');
+	if (pos != NULL) {
+		/* seconds present */
 		pos++;
-		dt->Minute = atoi(pos);
-		pos = strchr(pos, ':');
-		if (pos != NULL) {
-			/* seconds present */
-			pos++;
-			dt->Second = atoi(pos);
-		} else {
-			dt->Second = 0;
-		}
-
-		pos = strchr(time_start, '+');
-		if (pos == NULL)
-		  pos = strchr(time_start, '-');
-
-		if (pos != NULL) {
-			/* timezone present */
-			dt->Timezone = (*pos == '+' ? 1 : -1) * atoi(pos+1) * 3600 / 4;
-		} else {
-			dt->Timezone = 0;
-		}
+		dt->Second = atoi(pos);
 	} else {
-		dt->Hour = 0;
-		dt->Minute = 0;
 		dt->Second = 0;
+	}
+
+	pos = strchr(time_start, '+');
+	if (pos == NULL)
+	  pos = strchr(time_start, '-');
+
+	if (pos != NULL) {
+		/* timezone present */
+		dt->Timezone = (*pos == '+' ? 1 : -1) * atoi(pos+1) * 3600 / 4;
+	} else {
 		dt->Timezone = 0;
 	}
 	smprintf(s, "Parsed date: %d-%d-%d %d:%d:%d, TZ %d\n",
@@ -1624,7 +1617,9 @@ GSM_Error ATGEN_ReplyGetUSSD(GSM_Protocol_Message *msg, GSM_StateMachine *s)
 	GSM_Error error;
 	unsigned char *pos = NULL;
 	int code = 0;
-	int gsm7 = 0;
+	int dcs = 0;
+	int offset = 0;
+	GSM_Coding_Type coding;
 	char hex_encoded[2 * (GSM_MAX_USSD_LENGTH + 1)] = {0};
 	char packed[GSM_MAX_USSD_LENGTH + 1] = {0};
 	char decoded[GSM_MAX_USSD_LENGTH + 1] = {0};
@@ -1685,28 +1680,59 @@ GSM_Error ATGEN_ReplyGetUSSD(GSM_Protocol_Message *msg, GSM_StateMachine *s)
 		ussd.Text[0] = 0;
 		ussd.Text[1] = 0;
 
-		if (GSM_IsPhoneFeatureAvailable(s->Phone.Data.ModelInfo, F_ENCODED_USSD)) {
-			error = ATGEN_ParseReply(s, pos,
-						"+CUSD: @i, @r, @i @0",
-						&code,
-						hex_encoded, sizeof(hex_encoded),
-						&gsm7);
+		error = ATGEN_ParseReply(s, pos,
+					"+CUSD: @i, @r, @i @0",
+					&code,
+					hex_encoded, sizeof(hex_encoded),
+					&dcs);
 
+		if (error == ERR_NONE || GSM_IsPhoneFeatureAvailable(s->Phone.Data.ModelInfo, F_ENCODED_USSD)) {
 			if (error != ERR_NONE) {
-				gsm7 = 0;
+				dcs = 0;
 				ATGEN_ParseReply(s, pos,
 						"+CUSD: @i, @r @0",
 						&code,
 						hex_encoded, sizeof(hex_encoded));
 			}
 
-			if (gsm7 == 15) {
+			if ((dcs & 0xc0) == 0) {
+				if ((dcs & 0x30) != 0x10) {
+					/* GSM-7 */
+					coding = SMS_Coding_Default_No_Compression;
+				} else {
+					if ((dcs & 0xf) == 0) {
+						/* GSM-7 */
+						coding = SMS_Coding_Default_No_Compression;
+					} else if ((dcs & 0xf) == 1) {
+						offset = 2;
+						coding = SMS_Coding_Unicode_No_Compression;
+					} else {
+						smprintf(s, "WARNING: unknown DCS: 0x%02x\n", dcs);
+						coding = SMS_Coding_Default_No_Compression;
+					}
+				}
+			} else {
+				/* Fallback to SMS coding */
+				coding = GSM_GetMessageCoding(&(s->di), dcs);
+			}
+
+			smprintf(s, "coding %d -> %d\n", dcs, coding);
+
+			if (coding == SMS_Coding_Default_No_Compression) {
 				DecodeHexBin(packed, hex_encoded, strlen(hex_encoded));
 				GSM_UnpackEightBitsToSeven(0, strlen(hex_encoded), sizeof(decoded), packed, decoded);
-			} else {
+				DecodeDefault(ussd.Text, decoded, strlen(decoded), TRUE, NULL);
+
+			} else if (coding == SMS_Coding_Unicode_No_Compression) {
+				DecodeHexUnicode(ussd.Text, hex_encoded + offset, strlen(hex_encoded));
+			} else if (coding == SMS_Coding_8bit) {
 				DecodeHexBin(decoded, hex_encoded, strlen(hex_encoded));
+				GSM_UnpackEightBitsToSeven(0, strlen(hex_encoded), sizeof(decoded), packed, decoded);
+				DecodeDefault(ussd.Text, decoded, strlen(decoded), TRUE, NULL);
+				smprintf(s, "WARNING: 8-bit encoding!\n");
+			} else {
+				smprintf(s, "WARNING: unknown encoding!\n");
 			}
-			DecodeDefault(ussd.Text, decoded, strlen(decoded), TRUE, NULL);
 		} else {
 			ATGEN_ParseReply(s, pos,
 					"+CUSD: @i, @s @0",
@@ -2045,6 +2071,34 @@ GSM_Error ATGEN_GetFirmware(GSM_StateMachine *s)
 				s->Phone.Data.Version);
 	}
 	return error;
+}
+
+GSM_Error ATGEN_PostConnect(GSM_StateMachine *s)
+{
+	GSM_Phone_ATGENData     *Priv = &s->Phone.Data.Priv.ATGEN;
+	GSM_Error error;
+
+	if (Priv->Manufacturer == AT_Huawei) {
+		/* Disable Huawei specific unsolicited codes */
+		error = ATGEN_WaitForAutoLen(s, "AT^CURC=0\r", 0x00, 10, ID_SetIncomingCall);
+		if (error != ERR_NONE) {
+			return error;
+		}
+
+		/* Power on the modem */
+		error = GSM_WaitForAutoLen(s, "AT+CFUN=1\r", 0, 40, ID_SetPower);
+		if (error != ERR_NONE) {
+			return error;
+		}
+
+		/* Tell device that this is modem port */
+		error = ATGEN_WaitForAutoLen(s, "AT^PORTSEL=1\r", 0x00, 10, ID_SetIncomingCall);
+		if (error != ERR_NONE) {
+			return error;
+		}
+	}
+
+	return ERR_NONE;
 }
 
 GSM_Error ATGEN_Initialise(GSM_StateMachine *s)
@@ -4094,9 +4148,6 @@ GSM_Error ATGEN_PrivGetMemory (GSM_StateMachine *s, GSM_MemoryEntry *entry, int 
 	error = ATGEN_GetManufacturer(s);
 	if (error != ERR_NONE) return error;
 
-	error = ATGEN_SetPBKMemory(s, entry->MemoryType);
-	if (error != ERR_NONE) return error;
-
 	/* For reading we prefer unicode */
 	error = ATGEN_SetCharset(s, AT_PREF_CHARSET_UNICODE);
 	if (error != ERR_NONE) return error;
@@ -4117,11 +4168,17 @@ GSM_Error ATGEN_PrivGetMemory (GSM_StateMachine *s, GSM_MemoryEntry *entry, int 
 			goto read_memory;
 		}
 		if (Priv->PBK_SPBR == AT_AVAILABLE) {
+			error = ATGEN_SetPBKMemory(s, entry->MemoryType);
+			if (error != ERR_NONE) return error;
+
 			/* FirstMemoryEntry is not applied here, it is always 1 */
 			len = sprintf(req, "AT+SPBR=%i\r", entry->Location);
 			goto read_memory;
 		}
 		if (Priv->PBK_MPBR == AT_AVAILABLE) {
+			error = ATGEN_SetPBKMemory(s, entry->MemoryType);
+			if (error != ERR_NONE) return error;
+
 			if (Priv->MotorolaFirstMemoryEntry == -1) {
 				ATGEN_CheckMPBR(s);
 			}
@@ -4133,6 +4190,9 @@ GSM_Error ATGEN_PrivGetMemory (GSM_StateMachine *s, GSM_MemoryEntry *entry, int 
 			goto read_memory;
 		}
 	}
+
+	error = ATGEN_SetPBKMemory(s, entry->MemoryType);
+	if (error != ERR_NONE) return error;
 
 	if (Priv->FirstMemoryEntry == -1) {
 		error = ATGEN_GetMemoryInfo(s, NULL, AT_First);
@@ -6134,6 +6194,8 @@ GSM_Reply_Function ATGENReplyFunctions[] = {
 {ATGEN_GenericReply,		"AT+CPROT=16" 	 	,0x00,0x00,ID_AlcatelConnect	 },
 #endif
 {ATGEN_GenericReply,		"AT+CFUN="	,0x00,0x00,ID_SetPower	 },
+{ATGEN_GenericReply,		"AT^CURC="	,0x00,0x00,ID_SetIncomingCall	 },
+{ATGEN_GenericReply,		"AT^PORTSEL="	,0x00,0x00,ID_SetIncomingCall	 },
 {ATGEN_GenericReply,		"AT\r"			,0x00,0x00,ID_Initialise	 },
 {ATGEN_GenericReply,		"AT\n"			,0x00,0x00,ID_Initialise	 },
 {ATGEN_GenericReply,		"OK"			,0x00,0x00,ID_Initialise	 },
@@ -6282,7 +6344,8 @@ GSM_Phone_Functions ATGENPhone = {
 	NOTSUPPORTED,			/* 	GetGPRSAccessPoint	*/
 	NOTSUPPORTED,			/* 	SetGPRSAccessPoint	*/
 	SONYERICSSON_GetScreenshot,
-	ATGEN_SetPower
+	ATGEN_SetPower,
+	ATGEN_PostConnect
 };
 
 #endif

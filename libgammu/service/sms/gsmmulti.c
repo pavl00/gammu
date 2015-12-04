@@ -34,34 +34,34 @@ unsigned char GSM_MakeSMSIDFromTime(void)
 	return retval;
 }
 
-void GSM_Find_Free_Used_SMS2(GSM_Debug_Info *di, GSM_Coding_Type Coding,GSM_SMSMessage SMS, size_t *UsedText, size_t *FreeText, size_t *FreeBytes)
+void GSM_Find_Free_Used_SMS2(GSM_Debug_Info *di, GSM_Coding_Type Coding,GSM_SMSMessage *SMS, size_t *UsedText, size_t *FreeText, size_t *FreeBytes)
 {
 	size_t UsedBytes = 0;
 
 	switch (Coding) {
 	case SMS_Coding_Default_No_Compression:
-		FindDefaultAlphabetLen(SMS.Text,&UsedBytes,UsedText,500);
+		FindDefaultAlphabetLen(SMS->Text,&UsedBytes,UsedText,500);
 		UsedBytes = *UsedText * 7 / 8;
 		if (UsedBytes * 8 / 7 != *UsedText) UsedBytes++;
-		*FreeBytes = GSM_MAX_8BIT_SMS_LENGTH - SMS.UDH.Length - UsedBytes;
-		*FreeText = (GSM_MAX_8BIT_SMS_LENGTH - SMS.UDH.Length) * 8 / 7 - *UsedText;
+		*FreeBytes = GSM_MAX_8BIT_SMS_LENGTH - SMS->UDH.Length - UsedBytes;
+		*FreeText = (GSM_MAX_8BIT_SMS_LENGTH - SMS->UDH.Length) * 8 / 7 - *UsedText;
 		break;
 	case SMS_Coding_Unicode_No_Compression:
-		*UsedText = UnicodeLength(SMS.Text);
+		*UsedText = UnicodeLength(SMS->Text);
 		UsedBytes = *UsedText * 2;
-		*FreeBytes = GSM_MAX_8BIT_SMS_LENGTH - SMS.UDH.Length - UsedBytes;
+		*FreeBytes = GSM_MAX_8BIT_SMS_LENGTH - SMS->UDH.Length - UsedBytes;
 		*FreeText = *FreeBytes / 2;
 		break;
 	case SMS_Coding_8bit:
-		*UsedText = UsedBytes = SMS.Length;
-		*FreeBytes = GSM_MAX_8BIT_SMS_LENGTH - SMS.UDH.Length - UsedBytes;
+		*UsedText = UsedBytes = SMS->Length;
+		*FreeBytes = GSM_MAX_8BIT_SMS_LENGTH - SMS->UDH.Length - UsedBytes;
 		*FreeText = *FreeBytes;
 		break;
 	default:
 		break;
 	}
 	smfprintf(di, "UDH len %i, UsedBytes %ld, FreeText %ld, UsedText %ld, FreeBytes %ld\n",
-		SMS.UDH.Length,
+		SMS->UDH.Length,
 		(long)UsedBytes,
 		(long)*FreeText,
 		(long)*UsedText,
@@ -219,17 +219,23 @@ GSM_Error GSM_AddSMS_Text_UDH(GSM_Debug_Info *di,
 		      		size_t			*CopiedText,
 		      		size_t			*CopiedSMSText)
 {
-	size_t FreeText,FreeBytes,Copy,i,j;
+	size_t FreeText=0,FreeBytes=0,Copy,i,j;
 
 	smfprintf(di, "Checking used: ");
-	GSM_Find_Free_Used_SMS2(di, Coding,SMS->SMS[SMS->Number], UsedText, &FreeText, &FreeBytes);
+	GSM_Find_Free_Used_SMS2(
+		di, Coding, &(SMS->SMS[SMS->Number]),
+		UsedText, &FreeText, &FreeBytes
+	);
 
 	if (UDH) {
 		smfprintf(di, "Adding UDH\n");
 		if (FreeBytes - BufferLen <= 0) {
 			smfprintf(di, "Going to the new SMS\n");
 			SMS->Number++;
-			GSM_Find_Free_Used_SMS2(di, Coding,SMS->SMS[SMS->Number], UsedText, &FreeText, &FreeBytes);
+			GSM_Find_Free_Used_SMS2(
+				di, Coding, &(SMS->SMS[SMS->Number]),
+				UsedText, &FreeText, &FreeBytes
+			);
 		}
 		if (SMS->SMS[SMS->Number].UDH.Length == 0) {
 			SMS->SMS[SMS->Number].UDH.Length  = 1;
@@ -245,7 +251,10 @@ GSM_Error GSM_AddSMS_Text_UDH(GSM_Debug_Info *di,
 		if (FreeText == 0) {
 			smfprintf(di, "Going to the new SMS\n");
 			SMS->Number++;
-			GSM_Find_Free_Used_SMS2(di, Coding,SMS->SMS[SMS->Number], UsedText, &FreeText, &FreeBytes);
+			GSM_Find_Free_Used_SMS2(
+				di, Coding, &(SMS->SMS[SMS->Number]),
+				UsedText, &FreeText, &FreeBytes
+			);
 		}
 
 		Copy = FreeText;
@@ -285,7 +294,10 @@ GSM_Error GSM_AddSMS_Text_UDH(GSM_Debug_Info *di,
 	}
 
 	smfprintf(di, "Checking at the end: ");
-	GSM_Find_Free_Used_SMS2(di, Coding,SMS->SMS[SMS->Number], UsedText, &FreeText, &FreeBytes);
+	GSM_Find_Free_Used_SMS2(
+		di, Coding, &(SMS->SMS[SMS->Number]),
+		UsedText, &FreeText, &FreeBytes
+	);
 
 	return ERR_NONE;
 }
@@ -347,12 +359,15 @@ void GSM_SMSCounter(GSM_Debug_Info *di,
 		    int 		*SMSNum,
 		    size_t 		*CharsLeft)
 {
-	size_t			UsedText,FreeBytes;
+	size_t			UsedText=0,FreeBytes=0;
 	GSM_MultiSMSMessage 	MultiSMS;
 
 	MultiSMS.Number = 0;
 	GSM_MakeMultiPartSMS(di, &MultiSMS,MessageBuffer,UnicodeLength(MessageBuffer),UDHType,Coding,-1,FALSE);
-	GSM_Find_Free_Used_SMS2(di, Coding,MultiSMS.SMS[MultiSMS.Number-1], &UsedText, CharsLeft, &FreeBytes);
+	GSM_Find_Free_Used_SMS2(
+		di, Coding, &(MultiSMS.SMS[MultiSMS.Number-1]),
+		&UsedText, CharsLeft, &FreeBytes
+	);
 	*SMSNum = MultiSMS.Number;
 }
 
@@ -665,7 +680,7 @@ GSM_Error GSM_EncodeMultiPartSMS(GSM_Debug_Info *di,
 	case SMS_MMSIndicatorLong:
 		Class	= 1;
 		UDH	= UDH_MMSIndicatorLong;
-		GSM_EncodeMMSIndicatorSMSText(Buffer,&Length,*Info->Entries[0].MMSIndicator);
+		GSM_EncodeMMSIndicatorSMSText(Buffer,&Length,Info->Entries[0].MMSIndicator);
 		break;
 	case SMS_WAPIndicatorLong:
 		Class	= 1;
@@ -735,42 +750,36 @@ GSM_Error GSM_EncodeMultiPartSMS(GSM_Debug_Info *di,
 		NOKIA_EncodeWAPMMSSettingsSMSText(Buffer,&Length,Info->Entries[0].Settings,TRUE);
 		break;
 	case SMS_NokiaVCARD10Long:
+		Coding = SMS_Coding_Default_No_Compression;
 		/* is 1 SMS ? 8 = length of ..SCKE2 */
 		if (Length<=GSM_MAX_SMS_CHARS_LENGTH-8) {
 			sprintf(Buffer,"//SCKE2 ");
 			Length = 8;
-			Coding = SMS_Coding_Default_No_Compression;
 		} else {
 			UDH = UDH_NokiaPhonebookLong;
-			Coding = SMS_Coding_8bit;
 		}
 		error = GSM_EncodeVCARD(di, Buffer, buffer_size, &Length,Info->Entries[0].Phonebook,TRUE,Nokia_VCard10);
 		if (error != ERR_NONE) {
 			goto out;
 		}
-		if (Coding == SMS_Coding_Default_No_Compression) {
-			memcpy(Buffer2,Buffer,Length);
-			EncodeUnicode(Buffer,Buffer2,Length);
-		}
+		memcpy(Buffer2,Buffer,Length);
+		EncodeUnicode(Buffer,Buffer2,Length);
 		break;
 	case SMS_NokiaVCARD21Long:
-		/* Is 1 SMS ? 12 = length of ..SCKL23F4 */
-		if (Length<=GSM_MAX_SMS_CHARS_LENGTH-12) {
-			sprintf(Buffer,"//SCKL23F4%c%c",13,10);
-			Length = 12;
-			Coding = SMS_Coding_Default_No_Compression;
-		} else {
-			UDH = UDH_NokiaPhonebookLong;
-			Coding = SMS_Coding_8bit;
-		}
 		error = GSM_EncodeVCARD(di, Buffer, buffer_size, &Length,Info->Entries[0].Phonebook,TRUE,Nokia_VCard21);
 		if (error != ERR_NONE) {
 			goto out;
 		}
-		if (Coding == SMS_Coding_Default_No_Compression) {
-			memcpy(Buffer2,Buffer,Length);
-			EncodeUnicode(Buffer,Buffer2,Length);
+		Coding = SMS_Coding_Default_No_Compression;
+		/* Is 1 SMS ? 12 = length of ..SCKL23F4 */
+		if (Length <= GSM_MAX_SMS_CHARS_LENGTH - 12) {
+			sprintf(Buffer,"//SCKL23F4%c%c",13,10);
+			Length = 12;
+		} else {
+			UDH = UDH_NokiaPhonebookLong;
 		}
+		memcpy(Buffer2,Buffer,Length);
+		EncodeUnicode(Buffer,Buffer2,Length);
 		break;
 	case SMS_VCARD10Long:
 		error = GSM_EncodeVCARD(di, Buffer, buffer_size, &Length,Info->Entries[0].Phonebook,TRUE,Nokia_VCard10);
@@ -793,23 +802,20 @@ GSM_Error GSM_EncodeMultiPartSMS(GSM_Debug_Info *di,
 		EncodeUnicode(Buffer,Buffer2,Length);
 		break;
 	case SMS_NokiaVCALENDAR10Long:
-		/* Is 1 SMS ? 8 = length of ..SCKE4 */
-		if (Length<=GSM_MAX_SMS_CHARS_LENGTH-8) {
-			sprintf(Buffer,"//SCKE4 ");
-			Length = 8;
-			Coding = SMS_Coding_Default_No_Compression;
-		} else {
-			UDH = UDH_NokiaCalendarLong;
-			Coding = SMS_Coding_8bit;
-		}
 		error=GSM_EncodeVCALENDAR(Buffer, buffer_size,&Length,Info->Entries[0].Calendar,TRUE,Nokia_VCalendar);
 		if (error != ERR_NONE) {
 			goto out;
 		}
-		if (Coding == SMS_Coding_Default_No_Compression) {
-			memcpy(Buffer2,Buffer,Length);
-			EncodeUnicode(Buffer,Buffer2,Length);
+		Coding = SMS_Coding_Default_No_Compression;
+		/* Is 1 SMS ? 8 = length of ..SCKE4 */
+		if (Length <= GSM_MAX_SMS_CHARS_LENGTH - 8) {
+			sprintf(Buffer,"//SCKE4 ");
+			Length = 8;
+		} else {
+			UDH = UDH_NokiaCalendarLong;
 		}
+		memcpy(Buffer2,Buffer,Length);
+		EncodeUnicode(Buffer,Buffer2,Length);
 		break;
 	case SMS_NokiaVTODOLong:
 		error=GSM_EncodeVTODO(Buffer, buffer_size,&Length,Info->Entries[0].ToDo,TRUE,Nokia_VToDo);
@@ -1285,7 +1291,7 @@ gboolean GSM_DecodeMultiPartSMS(GSM_Debug_Info *di,
 {
 	int 			i;
 	unsigned int		j;
-	gboolean 			emsexist = FALSE;
+	gboolean 			emsexist = FALSE, result;
 	GSM_SiemensOTASMSInfo	SiemensInfo;
 
 	GSM_ClearMultiPartSMSInfo(Info);
@@ -1313,12 +1319,13 @@ gboolean GSM_DecodeMultiPartSMS(GSM_Debug_Info *di,
 		Info->Entries[0].File->Buffer 	= NULL;
 		Info->Entries[0].File->Used 	= 0;
 		for (i=0;i<SMS->Number;i++) {
-			GSM_DecodeSiemensOTASMS(di, &SiemensInfo,&SMS->SMS[i]);
-			j = SiemensInfo.AllDataLen - Info->Entries[0].File->Used;
-			if (j>SiemensInfo.DataLen) j = SiemensInfo.DataLen;
-			Info->Entries[0].File->Buffer = (unsigned char *)realloc(Info->Entries[0].File->Buffer,j+Info->Entries[0].File->Used);
-			memcpy(Info->Entries[0].File->Buffer+Info->Entries[0].File->Used,SiemensInfo.Data,j);
-			Info->Entries[0].File->Used += j;
+			if (GSM_DecodeSiemensOTASMS(di, &SiemensInfo,&SMS->SMS[i])) {
+				j = SiemensInfo.AllDataLen - Info->Entries[0].File->Used;
+				if (j>SiemensInfo.DataLen) j = SiemensInfo.DataLen;
+				Info->Entries[0].File->Buffer = (unsigned char *)realloc(Info->Entries[0].File->Buffer,j+Info->Entries[0].File->Used);
+				memcpy(Info->Entries[0].File->Buffer+Info->Entries[0].File->Used,SiemensInfo.Data,j);
+				Info->Entries[0].File->Used += j;
+			}
 		}
 		if (SiemensInfo.AllDataLen == Info->Entries[0].File->Used) {
 			Info->Entries[0].ID 	= SMS_SiemensFile;
@@ -1375,6 +1382,19 @@ gboolean GSM_DecodeMultiPartSMS(GSM_Debug_Info *di,
 	if (SMS->SMS[0].UDH.Type == UDH_ConcatenatedMessages ||
 	    SMS->SMS[0].UDH.Type == UDH_ConcatenatedMessages16bit) {
 		return GSM_DecodeLinkedText(di, Info, SMS);
+	}
+	/* Nokia vCard/vCalendar */
+	if (SMS->SMS[0].UDH.Type == UDH_NokiaCalendarLong ||
+	    SMS->SMS[0].UDH.Type == UDH_NokiaPhonebookLong) {
+		result = GSM_DecodeLinkedText(di, Info, SMS);
+		if (result) {
+			if (SMS->SMS[0].UDH.Type == UDH_NokiaPhonebookLong) {
+				Info->Entries[0].ID = SMS_NokiaVCARD10Long;
+			} else {
+				Info->Entries[0].ID = SMS_NokiaVCALENDAR10Long;
+			}
+		}
+		return result;
 	}
 	/* MMS indication */
 	if (SMS->SMS[0].UDH.Type == UDH_MMSIndicatorLong) {

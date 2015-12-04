@@ -484,7 +484,10 @@ static GSM_Error N6510_SearchForFileName1(GSM_StateMachine *s, GSM_File *File)
 
 	/* Allocate new cache */
 	error = N6510_AllocFileCache(s, 1);
-	if (error != ERR_NONE) return error;
+	if (error != ERR_NONE) {
+		free(BackupCache);
+		return error;
+	}
 
 	/* putting own data */
 	Priv->FilesCache[0].Level    	= 1;
@@ -852,9 +855,6 @@ static GSM_Error N6510_GetFolderListing1(GSM_StateMachine *s, GSM_File *File, gb
 
 		error = N6510_ShiftFileCache(s, -1);
 		if (error != ERR_NONE) return error;
-
-		/* 3510 for example */
-		if (error == ERR_EMPTY) continue;
 
 		break;
 	}

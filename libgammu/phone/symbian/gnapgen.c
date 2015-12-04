@@ -85,7 +85,6 @@ GSM_Error GNAPGEN_Install(GSM_StateMachine *s, const char *ExtraPath, gboolean M
 	}
 
 	error = PHONE_UploadFile(gsm, &INIFile);
-	free(AppletFile.Buffer);
 	if (error != ERR_NONE) {
 		return error;
 	}
@@ -1984,7 +1983,8 @@ GSM_Phone_Functions GNAPGENPhone = {
 	NOTSUPPORTED,			/* 	GetGPRSAccessPoint	*/
 	NOTSUPPORTED,			/* 	SetGPRSAccessPoint	*/
 	NOTSUPPORTED,			/* 	GetScreenshot		*/
-	NOTSUPPORTED			/* 	SetPower		*/
+	NOTSUPPORTED,			/* 	SetPower		*/
+	NOTSUPPORTED			/* 	PostConnect	*/
 };
 
 #endif

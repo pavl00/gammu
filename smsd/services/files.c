@@ -424,6 +424,8 @@ static GSM_Error SMSDFiles_FindOutboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDConf
 		SMSD_Log(DEBUG_NOTICE, Config, "error: SMS-count = 0");
 	}
 
+	Config->retries = 0;
+
 	return ERR_NONE;
 }
 
@@ -803,6 +805,7 @@ GSM_SMSDService SMSDFiles = {
 	SMSDFiles_MoveSMS,
 	SMSDFiles_CreateOutboxSMS,
 	SMSDFiles_AddSentSMSInfo,
+	NOTIMPLEMENTED,		/* UpdateRetries        */
 	NOTIMPLEMENTED,		/* RefreshSendStatus    */
 	NOTIMPLEMENTED,		/* RefreshPhoneStatus   */
 	SMSDFiles_ReadConfiguration

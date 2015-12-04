@@ -28,7 +28,7 @@ if (LARGE_FILES)
 endif (LARGE_FILES)
 
 # Set version
-set (GAMMU_VERSION "1.36.7" CACHE INTERNAL "")
+set (GAMMU_VERSION "1.36.8" CACHE INTERNAL "")
 string (REGEX REPLACE "^([0-9]*)\\.([0-9]*)\\.([0-9]*)$" "\\1" "GAMMU_VERSION_MAJOR" "${GAMMU_VERSION}")
 string (REGEX REPLACE "^([0-9]*)\\.([0-9]*)\\.([0-9]*)$" "\\2" "GAMMU_VERSION_MINOR" "${GAMMU_VERSION}")
 string (REGEX REPLACE "^([0-9]*)\\.([0-9]*)\\.([0-9]*)$" "\\3" "GAMMU_VERSION_PATCH" "${GAMMU_VERSION}")
@@ -166,6 +166,8 @@ find_program(SQLITE_BIN sqlite3)
 find_program(SED_BIN sed)
 find_program(MYSQL_BIN mysql)
 find_program(PSQL_BIN psql)
+
+find_package (Threads)
 
 # Check for Python
 find_package(PythonInterp 2)

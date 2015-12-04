@@ -790,7 +790,7 @@ GSM_Error SMSD_ReadConfig(const char *filename, GSM_SMSDConfig *Config, gboolean
 	Config->commtimeout = INI_GetInt(Config->smsdcfgfile, "smsd", "commtimeout", 30);
 	Config->deliveryreportdelay = INI_GetInt(Config->smsdcfgfile, "smsd", "deliveryreportdelay", 600);
 	Config->sendtimeout = INI_GetInt(Config->smsdcfgfile, "smsd", "sendtimeout", 30);
-	Config->receivefrequency = INI_GetInt(Config->smsdcfgfile, "smsd", "receivefrequency", 0);
+	Config->receivefrequency = INI_GetInt(Config->smsdcfgfile, "smsd", "receivefrequency", 15);
 	Config->statusfrequency = INI_GetInt(Config->smsdcfgfile, "smsd", "statusfrequency", 15);
 	Config->loopsleep = INI_GetInt(Config->smsdcfgfile, "smsd", "loopsleep", 1);
 	Config->checksecurity = INI_GetBool(Config->smsdcfgfile, "smsd", "checksecurity", TRUE);
@@ -1460,7 +1460,7 @@ gboolean SMSD_ReadDeleteSMS(GSM_SMSDConfig *Config)
 				}
 				break;
 			default:
-				SMSD_LogError(DEBUG_INFO, Config, "Error getting SMS", error);
+				SMSD_LogError(DEBUG_ERROR, Config, "Error getting SMS", error);
 				if (GetSMSData != NULL) {
 					for (i = 0; GetSMSData[i] != NULL; i++) {
 						free(GetSMSData[i]);
@@ -1635,15 +1635,13 @@ GSM_Error SMSD_SendSMS(GSM_SMSDConfig *Config)
 	}
 
 	if (Config->SMSID[0] != 0 && (Config->retries > Config->maxretries)) {
-		SMSD_Log(DEBUG_NOTICE, Config, "Max liczba prob wysylki %s", Config->SMSID);
-
-			SMSD_Log(DEBUG_INFO, Config, "Moved to errorbox: %s", Config->SMSID);
-			for (i=0;i<sms.Number;i++) {
-				Config->Status->Failed++;
-				Config->Service->AddSentSMSInfo(&sms, Config, Config->SMSID, i + 1, SMSD_SEND_SENDING_ERROR, Config->TPMR);
-			}
-			Config->Service->MoveSMS(&sms,Config, Config->SMSID, TRUE,FALSE);
-			return ERR_UNKNOWN;
+		SMSD_Log(DEBUG_NOTICE, Config, "Moved to errorbox, reached MaxRetries: %s", Config->SMSID);
+		for (i=0;i<sms.Number;i++) {
+			Config->Status->Failed++;
+			Config->Service->AddSentSMSInfo(&sms, Config, Config->SMSID, i + 1, SMSD_SEND_SENDING_ERROR, Config->TPMR);
+		}
+		Config->Service->MoveSMS(&sms,Config, Config->SMSID, TRUE,FALSE);
+		return ERR_UNKNOWN;
 	} else {
 		SMSD_Log(DEBUG_NOTICE, Config, "New message to send: %s", Config->SMSID);
 		Config->retries++;
@@ -1748,14 +1746,14 @@ failure_unsent:
 	}
 	Config->Status->Failed++;
 
-    Config->Service->UpdateRetries(Config, Config->SMSID);
-	
+	Config->Service->UpdateRetries(Config, Config->SMSID);
+
        sleep(60);
 	return ERR_UNKNOWN;
 failure_sent:
 
 	Config->Service->UpdateRetries(Config, Config->SMSID);
-	
+
 	return ERR_UNKNOWN;
 }
 

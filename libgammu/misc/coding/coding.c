@@ -222,14 +222,22 @@ int DecodeWithUnicodeAlphabet(wchar_t src, unsigned char *dest)
 
 void DecodeUnicode (const unsigned char *src, char *dest)
 {
- 	int 		i=0,o=0;
- 	wchar_t 	wc;
+	int		i=0,o=0;
+	wchar_t		value, second;
 
- 	while (src[(2*i)+1]!=0x00 || src[2*i]!=0x00) {
- 		wc = src[(2*i)+1] | (src[2*i] << 8);
-		o += DecodeWithUnicodeAlphabet(wc, dest + o);
- 		i++;
- 	}
+	while (src[(2*i)+1]!=0x00 || src[2*i]!=0x00) {
+		value = src[i * 2] * 256 + src[i * 2 + 1];
+		/* Decode UTF-16 */
+		if (value >= 0xD800 && value <= 0xDBFF) {
+			second = src[(i + 1) * 2] * 256 + src[(i + 1) * 2 + 1];
+			if (second >= 0xDC00 && second <= 0xDFFF) {
+				i++;
+				value = ((value - 0xD800) << 10) + (second - 0xDC00) + 0x010000;
+			}
+		}
+		o += DecodeWithUnicodeAlphabet(value, dest + o);
+		i++;
+	}
 	dest[o]=0;
 }
 
@@ -997,15 +1005,14 @@ void AddBuffer(unsigned char 	*Destination,
 	       unsigned char 	*Source,
 	       size_t 		BitsToProcess)
 {
-	size_t i=0;
+	size_t i;
 
-	while (i!=BitsToProcess) {
+	for (i = 0; i < BitsToProcess; i++) {
 		if (GetBit(Source, i)) {
 			SetBit(Destination, (*CurrentBit)+i);
 		} else {
 			ClearBit(Destination, (*CurrentBit)+i);
 		}
-		i++;
 	}
 	(*CurrentBit) = (*CurrentBit) + BitsToProcess;
 }
@@ -1015,11 +1022,7 @@ void AddBufferByte(unsigned char *Destination,
 		   unsigned char Source,
 		   size_t		 BitsToProcess)
 {
-	unsigned char Byte;
-
-	Byte = Source;
-
-	AddBuffer(Destination, CurrentBit, &Byte, BitsToProcess);
+	AddBuffer(Destination, CurrentBit, &Source, BitsToProcess);
 }
 
 void GetBuffer(unsigned char *Source,
@@ -1694,6 +1697,7 @@ void DecodeXMLUTF8(unsigned char *dest, const char *src, int len)
 	}
 	if (src == NULL) {
 		*dest = 0;
+		free(tmp);
 		return;
 	}
 
@@ -1706,7 +1710,7 @@ void DecodeXMLUTF8(unsigned char *dest, const char *src, int len)
 		/* Skip ampersand */
 		pos++;
 		/* Detect end of string */
-		if (pos == 0) break;
+		if (*pos == 0) break;
 		/* Find entity length */
 		pos_end = strchr(pos, ';');
 		if (pos_end - pos > 6 || pos_end == NULL) {
@@ -1722,9 +1726,9 @@ void DecodeXMLUTF8(unsigned char *dest, const char *src, int len)
 		/* Create entity */
 		/* strndup would be better, but not portable */
 		entity = strdup(pos);
+		if (entity == NULL) break;
 		entity[pos_end - pos] = 0;
 		dbgprintf(NULL, "Found XML entity: %s\n", entity);
-		if (entity == NULL) break;
 		if (entity[0] == '#') {
 			if (entity[1] == 'x' || entity[1] == 'X') {
 				c = strtoull(entity + 2, NULL, 16);

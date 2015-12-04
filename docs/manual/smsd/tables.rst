@@ -160,6 +160,9 @@ Fields description:
 ``CreatorID`` (text)
     identification of program created the message
 
+``Retries`` (integer)
+    number of attempted retries when sending this message
+
 .. _outbox_multipart:
 
 outbox_multipart
@@ -343,6 +346,12 @@ History of database structure
     production environment.
 
 History of schema versions:
+
+15
+
+    Added ``Retries`` field.
+
+    .. versionchanged:: 1.36.7
 
 14
 

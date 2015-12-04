@@ -19,9 +19,23 @@ the issue.
 ChangeLog
 =========
     
-2015???? - 1.36.7
+2015???? - 1.36.8
+
+[-] * Changed default value for ReceiveFrequency.
+[-] * Fixed compatibility for PostgreSQL.
+[-] * Fixed build failure with all disabled SMSD backends.
+    
+20151129 - 1.36.7
 
 [-] * Support devices which do not report full network status.
+[-] * Disable Huawei unsolicited messages on startup.
+[-] * Various improvements for Huawei modems.
+[-] * Fixed compilation on Windows.
+[-] * Fixed regression with Siemens AX75.
+[-] * Improved decoding of USSD responses.
+[-] * Properly decode emojis to console or files backend.
+[+] * Added support for proxying the connection through arbitrary command.
+[+] * SMSD now tracks retries count per message.
 
 20151012 - 1.36.6
 
