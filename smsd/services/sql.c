@@ -838,6 +838,17 @@ static GSM_Error SMSDSQL_FindOutboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDConfig
 		sms->SMS[i].SMSC.Number[1] = 0;
 	}
 
+	//delte duplicates from sentiitems -probem when one of multipart message is sento correctly
+	vars[0].type = SQL_TYPE_STRING;
+	vars[0].v.s = ID;
+	vars[1].type = SQL_TYPE_NONE;
+
+	if (SMSDSQL_NamedQuery(Config, Config->SMSDSQL_queries[SQL_QUERY_DELETE_SENTITEMS], NULL, vars, &res) != SQL_OK) {
+		SMSD_Log(DEBUG_INFO, Config, "Error deleting sentitem from database (%s)", __FUNCTION__);
+		//return ERR_UNKNOWN;
+	}
+	
+	
 	for (i = 1; i < GSM_MAX_MULTI_SMS + 1; i++) {
 		vars[0].type = SQL_TYPE_STRING;
 		vars[0].v.s = ID;
@@ -1403,6 +1414,12 @@ GSM_Error SMSDSQL_ReadConfiguration(GSM_SMSDConfig *Config)
 		"DELETE FROM outbox_multipart WHERE ", ESCAPE_FIELD("ID"), "=%1", NULL) != ERR_NONE) {
 		return ERR_UNKNOWN;
 	}
+	
+	if (SMSDSQL_option(Config, SQL_QUERY_DELETE_SENTITEMS, "delete_sentitems",
+		"DELETE FROM sentitems WHERE ", ESCAPE_FIELD("ID"), "=%1", NULL) != ERR_NONE) {
+		return ERR_UNKNOWN;
+	}
+	
 
 	if (SMSDSQL_option(Config, SQL_QUERY_CREATE_OUTBOX, "create_outbox",
 		"INSERT INTO outbox "
