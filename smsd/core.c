@@ -39,6 +39,9 @@
 #include <ctype.h>
 #include <errno.h>
 
+#include "../libgammu/gsmstate.h"
+#include "../libgammu/phone/at/atgen.h"
+
 /* Some systems let waitpid(2) tell callers about stopped children. */
 #if !defined (WCONTINUED)
 #  define WCONTINUED 0
@@ -2065,11 +2068,32 @@ GSM_Error SMSD_MainLoop(GSM_SMSDConfig *Config, gboolean exit_on_failure, int ma
 		/* Send any queued messages */
 		current_time = time(NULL);
 		if (Config->enable_send && (difftime(current_time, lastnothingsent) >= Config->commtimeout)) {
+	
+
+			GSM_NetworkInfo netinfo;
+			error = GSM_GetNetworkInfo(Config->gsm, &netinfo);
+ 
+			//if (netinfo.State == GSM_NoNetwork) { 
+			if (netinfo.State != GSM_HomeNetwork) {
+				SMSD_LogError(DEBUG_INFO, Config, "Nonetwork", ERR_UNKNOWN);
+
+				error = GSM_WaitForAutoLen(Config->gsm, "AT+CFUN=1\r", 0x00, 3, ID_Reset);
+				//if (error != ERR_NONE) {
+				//	return error;
+				//}
+				sleep(60);
+				//error = GSM_WaitForAutoLen(Config->gsm, "ATE1\r", 0x00, 3, ID_EnableEcho);
+				//sleep(60);
+
+				//GSM_Terminate();
+				//return;
+			} else{
 			error = SMSD_SendSMS(Config);
-			if (error == ERR_EMPTY) {
-				lastnothingsent = current_time;
-			}
+				if (error == ERR_EMPTY) {
+					lastnothingsent = current_time;
+				}
 			/* We don't care about other errors here, they are handled in SMSD_SendSMS */
+			}
 		}
 
 		/* Refresh phone status in shared memory and in service */
