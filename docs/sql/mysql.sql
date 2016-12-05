@@ -7,34 +7,18 @@
 -- --------------------------------------------------------
 
 -- 
--- Table structure for table `daemons`
--- 
-
-CREATE TABLE `daemons` (
-  `Start` text NOT NULL,
-  `Info` text NOT NULL
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
-
--- 
--- Dumping data for table `daemons`
--- 
-
-
--- --------------------------------------------------------
-
--- 
 -- Table structure for table `gammu`
 -- 
 
 CREATE TABLE `gammu` (
-  `Version` integer NOT NULL default '0'
+  `Version` integer NOT NULL default '0' PRIMARY KEY
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
 
 -- 
 -- Dumping data for table `gammu`
 -- 
 
-INSERT INTO `gammu` (`Version`) VALUES (15);
+INSERT INTO `gammu` (`Version`) VALUES (16);
 
 -- --------------------------------------------------------
 
@@ -51,7 +35,7 @@ CREATE TABLE `inbox` (
   `UDH` text NOT NULL,
   `SMSCNumber` varchar(20) NOT NULL default '',
   `Class` integer NOT NULL default '-1',
-  `TextDecoded` text NOT NULL default '',
+  `TextDecoded` text NOT NULL,
   `ID` integer unsigned NOT NULL auto_increment,
   `RecipientID` text NOT NULL,
   `Processed` enum('false','true') NOT NULL default 'false',
@@ -80,7 +64,7 @@ CREATE TABLE `outbox` (
   `Coding` enum('Default_No_Compression','Unicode_No_Compression','8bit','Default_Compression','Unicode_Compression') NOT NULL default 'Default_No_Compression',
   `UDH` text,
   `Class` integer default '-1',
-  `TextDecoded` text NOT NULL default '',
+  `TextDecoded` text NOT NULL,
   `ID` integer unsigned NOT NULL auto_increment,
   `MultiPart` enum('false','true') default 'false',
   `RelativeValidity` integer default '-1',
@@ -89,11 +73,12 @@ CREATE TABLE `outbox` (
   `DeliveryReport` enum('default','yes','no') default 'default',
   `CreatorID` text NOT NULL,
   `Retries` int(3) default 0,
+  `Priority` integer default 0,
   PRIMARY KEY `ID` (`ID`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX outbox_date ON outbox(SendingDateTime, SendingTimeOut);
-CREATE INDEX outbox_sender ON outbox(SenderID);
+CREATE INDEX outbox_sender ON outbox(SenderID(250));
 
 -- 
 -- Dumping data for table `outbox`
@@ -111,7 +96,7 @@ CREATE TABLE `outbox_multipart` (
   `Coding` enum('Default_No_Compression','Unicode_No_Compression','8bit','Default_Compression','Unicode_Compression') NOT NULL default 'Default_No_Compression',
   `UDH` text,
   `Class` integer default '-1',
-  `TextDecoded` text default NULL,
+  `TextDecoded` text,
   `ID` integer unsigned NOT NULL default '0',
   `SequencePosition` integer NOT NULL default '1',
   PRIMARY KEY (`ID`, `SequencePosition`)
@@ -120,43 +105,6 @@ CREATE TABLE `outbox_multipart` (
 -- 
 -- Dumping data for table `outbox_multipart`
 -- 
-
-
--- --------------------------------------------------------
-
--- 
--- Table structure for table `pbk`
--- 
-
-CREATE TABLE `pbk` (
-  `ID` integer NOT NULL auto_increment,
-  `GroupID` integer NOT NULL default '-1',
-  `Name` text NOT NULL,
-  `Number` text NOT NULL,
-  PRIMARY KEY (`ID`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4;
-
--- 
--- Dumping data for table `pbk`
--- 
-
-
--- --------------------------------------------------------
-
--- 
--- Table structure for table `pbk_groups`
--- 
-
-CREATE TABLE `pbk_groups` (
-  `Name` text NOT NULL,
-  `ID` integer NOT NULL auto_increment,
-  PRIMARY KEY `ID` (`ID`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 AUTO_INCREMENT=1 ;
-
--- 
--- Dumping data for table `pbk_groups`
--- 
-
 
 -- --------------------------------------------------------
 
@@ -172,6 +120,7 @@ CREATE TABLE `phones` (
   `Send` enum('yes','no') NOT NULL default 'no',
   `Receive` enum('yes','no') NOT NULL default 'no',
   `IMEI` varchar(35) NOT NULL,
+  `IMSI` varchar(35) NOT NULL,
   `NetCode` varchar(10) default 'ERROR',
   `NetName` varchar(35) default 'ERROR',
   `Client` text NOT NULL,
@@ -203,7 +152,7 @@ CREATE TABLE `sentitems` (
   `UDH` text NOT NULL,
   `SMSCNumber` varchar(20) NOT NULL default '',
   `Class` integer NOT NULL default '-1',
-  `TextDecoded` text NOT NULL default '',
+  `TextDecoded` text NOT NULL,
   `ID` integer unsigned NOT NULL default '0',
   `SenderID` varchar(255) NOT NULL,
   `SequencePosition` integer NOT NULL default '1',
@@ -218,7 +167,7 @@ CREATE TABLE `sentitems` (
 CREATE INDEX sentitems_date ON sentitems(DeliveryDateTime);
 CREATE INDEX sentitems_tpmr ON sentitems(TPMR);
 CREATE INDEX sentitems_dest ON sentitems(DestinationNumber);
-CREATE INDEX sentitems_sender ON sentitems(SenderID);
+CREATE INDEX sentitems_sender ON sentitems(SenderID(250));
 
 -- 
 -- Dumping data for table `sentitems`

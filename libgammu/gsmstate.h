@@ -210,7 +210,7 @@ typedef struct _GSM_User	 	GSM_User;
 #  include "device/irda/irda.h"
 #endif
 #ifdef GSM_ENABLE_BLUETOOTHDEVICE
-#  include "device/bluetoth/bluetoth.h"
+#  include "device/bluetooth/bluetooth.h"
 #endif
 #ifndef WIN32
 #  include "device/proxy/proxy.h"
@@ -1266,15 +1266,15 @@ typedef struct {
 	/**
 	 * Retrieves file part.
 	 */
-	GSM_Error (*GetFilePart)	(GSM_StateMachine *s, GSM_File *File, int *Handle, int *Size);
+	GSM_Error (*GetFilePart)	(GSM_StateMachine *s, GSM_File *File, int *Handle, size_t *Size);
 	/**
 	 * Adds file part to filesystem.
 	 */
-	GSM_Error (*AddFilePart)	(GSM_StateMachine *s, GSM_File *File, int *Pos, int *Handle);
+	GSM_Error (*AddFilePart)	(GSM_StateMachine *s, GSM_File *File, size_t *Pos, int *Handle);
 	/**
 	 * Sends file to phone, it's up to phone to decide what to do with it.
 	 */
-	GSM_Error (*SendFilePart)	(GSM_StateMachine *s, GSM_File *File, int *Pos, int *Handle);
+	GSM_Error (*SendFilePart)	(GSM_StateMachine *s, GSM_File *File, size_t *Pos, int *Handle);
 	/**
 	 * Acquires filesystem status.
 	 */
@@ -1311,6 +1311,10 @@ typedef struct {
 	 * Post connect hook
 	 */
 	GSM_Error (*PostConnect)	(GSM_StateMachine *s);
+	/**
+	 * API action hook, executed before API call
+	 */
+	GSM_Error (*PreAPICall)(GSM_StateMachine *s);
 } GSM_Phone_Functions;
 
 	extern GSM_Phone_Functions NAUTOPhone;
@@ -1417,6 +1421,10 @@ struct _GSM_StateMachine {
 	 * Flag for interrupting communication.
 	 */
 	volatile gboolean Abort;
+	/**
+	 * Counter for dispatched messages.
+	 */
+	volatile size_t MessagesCount;
 
 	GSM_Device		Device; /**< Device driver data and functions */
 	GSM_Protocol		Protocol; /**< Protocol driver data and functions */
@@ -1436,7 +1444,7 @@ struct _GSM_StateMachine {
 GSM_Error GSM_RegisterAllPhoneModules	(GSM_StateMachine *s);
 
 GSM_Error GSM_WaitForOnce		(GSM_StateMachine *s, unsigned const char *buffer,
-			  		 int length, int type, int timeout);
+			  		 size_t length, int type, int timeout);
 
 /**
  * Wait for reply from the phone.
@@ -1451,7 +1459,7 @@ GSM_Error GSM_WaitForOnce		(GSM_StateMachine *s, unsigned const char *buffer,
  * \return Error code, ERR_NONE on sucecss.
  */
 GSM_Error GSM_WaitFor			(GSM_StateMachine *s, unsigned const char *buffer,
-		       			 int length, int type, int timeout,
+		       			 size_t length, int type, int timeout,
 					 GSM_Phone_RequestID request) WARNUNUSED;
 
 /**
@@ -1472,10 +1480,10 @@ GSM_Error GSM_WaitFor			(GSM_StateMachine *s, unsigned const char *buffer,
 
 GSM_Error GSM_DispatchMessage		(GSM_StateMachine *s);
 
-void 	  GSM_DumpMessageText		(GSM_StateMachine *s, unsigned const char *message, int messagesize, int type);
-void 	  GSM_DumpMessageTextRecv	(GSM_StateMachine *s, unsigned const char *message, int messagesize, int type);
-void 	  GSM_DumpMessageBinary		(GSM_StateMachine *s, unsigned const char *message, int messagesize, int type);
-void GSM_DumpMessageBinaryRecv(GSM_StateMachine *s, unsigned const char *message, int messagesize, int type);
+void 	  GSM_DumpMessageText		(GSM_StateMachine *s, unsigned const char *message, size_t messagesize, int type);
+void 	  GSM_DumpMessageTextRecv	(GSM_StateMachine *s, unsigned const char *message, size_t messagesize, int type);
+void 	  GSM_DumpMessageBinary		(GSM_StateMachine *s, unsigned const char *message, size_t messagesize, int type);
+void GSM_DumpMessageBinaryRecv(GSM_StateMachine *s, unsigned const char *message, size_t messagesize, int type);
 
 
 void GSM_OSErrorInfo(GSM_StateMachine *s, const char *description);

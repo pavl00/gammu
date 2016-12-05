@@ -14,7 +14,7 @@ For tables description see :ref:`gammu-smsd-tables`.
 
 This backend is based on :ref:`gammu-smsd-sql`.
 
-.. _PostgreSQL: http://www.postgresql.org/
+.. _PostgreSQL: https://www.postgresql.org/
 
 Configuration
 -------------
@@ -33,8 +33,10 @@ The configuration file then can look like:
 
 .. seealso:: :ref:`gammu-smsdrc`
 
-Creating tables
----------------
+.. _pgsql-create:
+
+Creating tables for PostgreSQL
+------------------------------
 
 SQL script for creating tables in PostgreSQL database:
 

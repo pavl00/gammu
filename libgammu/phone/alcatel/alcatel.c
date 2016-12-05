@@ -847,7 +847,7 @@ static void ALCATEL_DecodeString(GSM_StateMachine *s, unsigned const char *buffe
 	len = buffer[0];
 	if (Priv->ProtocolVersion == V_1_1 && (buffer[1] == ALCATEL_UNICODE_FLAG)) {
 		/* UCS-2-BE string */
-		if (GSM_PHONEBOOK_TEXT_LENGTH < len/2) {
+		if (GSM_PHONEBOOK_TEXT_LENGTH <= len / 2) {
 			smprintf(s, "WARNING: Text truncated, to %d from %d\n", maxlen, len/2 + 1);
 			len = GSM_PHONEBOOK_TEXT_LENGTH * 2;
 		}
@@ -856,7 +856,7 @@ static void ALCATEL_DecodeString(GSM_StateMachine *s, unsigned const char *buffe
 		Priv->ReturnString[len + 2] = 0;
 	} else {
 		/* Alcatel alphabet string */
-		if (GSM_PHONEBOOK_TEXT_LENGTH < len) {
+		if (GSM_PHONEBOOK_TEXT_LENGTH <= len) {
 			smprintf(s, "WARNING: Text truncated, to %d from %d\n", maxlen, len + 1);
 			len = GSM_PHONEBOOK_TEXT_LENGTH;
 		}
@@ -2066,11 +2066,13 @@ static GSM_Error ALCATEL_SetMemory(GSM_StateMachine *s, GSM_MemoryEntry *entry)
 					break;
 				case PBK_Text_LastName:
 					UpdatedFields[0] = TRUE;
-					if ((error = ALCATEL_UpdateField(s, Alcatel_string, entry->Location, 0, entry->Entries[i].Text)) != ERR_NONE) return error; NameSet = TRUE;
+					if ((error = ALCATEL_UpdateField(s, Alcatel_string, entry->Location, 0, entry->Entries[i].Text)) != ERR_NONE) return error;
+					NameSet = TRUE;
 					break;
 				case PBK_Text_FirstName:
 					UpdatedFields[1] = TRUE;
-					if ((error = ALCATEL_UpdateField(s, Alcatel_string, entry->Location, 1, entry->Entries[i].Text)) != ERR_NONE) return error; NameSet = TRUE;
+					if ((error = ALCATEL_UpdateField(s, Alcatel_string, entry->Location, 1, entry->Entries[i].Text)) != ERR_NONE) return error;
+					NameSet = TRUE;
 					break;
 				case PBK_Text_Company:
 					UpdatedFields[2] = TRUE;
@@ -4202,7 +4204,8 @@ GSM_Phone_Functions ALCATELPhone = {
 	NOTSUPPORTED,			/* 	SetGPRSAccessPoint	*/
 	NOTSUPPORTED,			/* 	GetScreenshot		*/
 	NOTSUPPORTED,			/* 	SetPower		*/
-	NOTSUPPORTED			/* 	PostConnect	*/
+	NOTSUPPORTED,			/* 	PostConnect	*/
+	NONEFUNCTION			/*	PreAPICall		*/
 };
 
 #endif

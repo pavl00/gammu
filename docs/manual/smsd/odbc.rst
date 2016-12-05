@@ -22,7 +22,7 @@ Supported drivers
 On Microsoft Windows, Gammu uses native ODBC, on other platforms, `unixODBC`_
 can be used. 
 
-.. _ODBC: http://en.wikipedia.org/wiki/Open_Database_Connectivity
+.. _ODBC: https://en.wikipedia.org/wiki/Open_Database_Connectivity
 .. _unixODBC: http://www.unixodbc.org/
 
 Limitations
@@ -43,11 +43,29 @@ this manual to do that.
 You specify data source name (DSN) as :config:option:`Host` in
 :ref:`gammu-smsdrc`. The data source is configured depending on your platform.
 
+.. note::
+
+    Please remember that SMSD might be running in different context than your
+    user (separate account on Linux or as as service on Windows), so the ODBC
+    DSN needs to be configured as system wide in this case (system DSN on
+    Windows or in global configuration on Linux).
+
 On Microsoft Windows, you can find instructions on Microsoft website:
-http://support.microsoft.com/kb/305599
+https://support.microsoft.com/kb/305599
 
 For unixODBC this is documented in the user manual:
 http://www.unixodbc.org/doc/UserManual/
+
+Creating tables
+---------------
+
+Prior to starting SMSD you have to create tables it will use. Gammu ships SQL
+scripts for several databases to do that:
+
+* :ref:`mysql-create`
+* :ref:`pgsql-create`
+* :ref:`sqlite-create`
+
 
 Example
 -------

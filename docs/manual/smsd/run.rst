@@ -31,7 +31,9 @@ again.
 Environment
 -----------
 
-program is executed with environment which contains lot of information about
+.. versionadded:: 1.28.0
+
+Program is executed with environment which contains lot of information about
 the message. You can use it together with NULL service (see
 :ref:`gammu-smsd-null`) to implement completely own processing of messages.
 
@@ -113,6 +115,15 @@ Following script (if used as :config:option:`RunOnReceive` handler) passes
 message data to other program. This works only with the :ref:`gammu-smsd-files`.
 
 .. literalinclude:: ../../../contrib/smsd-scripts/receive-files
+    :language: sh
+
+Invoking commands based on message text
++++++++++++++++++++++++++++++++++++++++
+
+Following script (if used as :config:option:`RunOnReceive` handler) executes
+given programs based on message text.
+
+.. literalinclude:: ../../../contrib/smsd-scripts/sms-commands
     :language: sh
 
 Passing message text to program

@@ -53,7 +53,7 @@ accepted on some platforms):
 
 .. option:: -U, --user=user
 
-    Drop daemon privileges to chosed user after starting.
+    Drop daemon privileges to chosen user after starting.
 
 .. option:: -G, --group=group
 
@@ -118,6 +118,8 @@ accepted on some platforms):
 
     .. versionadded:: 1.31.90
 
+.. _gammu-smsd-signals:
+
 Signals
 -------
 
@@ -130,9 +132,9 @@ SIGINT, SIGTERM
 SIGALRM
     Used internally for :option:`gammu-smsd -X`
 SIGUSR1
-    Suspends SMSD operartion, closing connection to phone and database.
+    Suspends SMSD operation, closing connection to phone and database.
 SIGUSR2
-    Resumes SMSD operattion (after previous suspend).
+    Resumes SMSD operation (after previous suspend).
 
 .. versionchanged:: 1.22.91
     Added support for SIGHUP.
@@ -210,13 +212,35 @@ For example the command line can look like:
 You now should be able to get errors from SMSD even if it fails to start as a
 service.
 
+.. _gammu-smsd-suspend:
+
+Invoking Gammu and suspending SMSD
+++++++++++++++++++++++++++++++++++
+
+As you can not run Gammu and Gammu SMSD at same time on signle device, you can
+workaround this limitation by suspending SMSD temporarily using `SIGUSR1` and
+`SIGUSR2` signals (see also :ref:`gammu-smsd-signals`):
+
+.. code-block:: sh
+
+    SMSD_PID=`pidof gammu-smsd`
+    if [ -z "$SMSD_PID" ] ; then
+        echo "Failed to figure out SMSD PID!"
+    else
+        kill -SIGUSR1 $SMSD_PID
+        gammu identify
+        kill -SIGUSR2 $SMSD_PID
+    fi
+
+
 Known Limitations
 -----------------
 
 You can not use same phone by more programs in same time. However in case you
 did not enable locking in :config:section:`[gammu]` section, it might be able
 to start the communication with phone from more programs. In this case neither
-of the programs will probably work.
+of the programs will probably work, see :ref:`gammu-smsd-suspend` for
+workaround.
 
 There is no way to detect that SMS message is reply to another by looking at
 message headers. The only way to achieve this is to add some token to the

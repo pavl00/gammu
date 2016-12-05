@@ -12,6 +12,10 @@
  * Files handling.
  */
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #include <gammu-types.h>
 #include <gammu-datetime.h>
 #include <gammu-limits.h>
@@ -22,11 +26,11 @@
  * \ingroup File
  */
 typedef struct {
-	int Free;
-	int Used;
-	int UsedImages;
-	int UsedSounds;
-	int UsedThemes;
+	size_t Free;
+	size_t Used;
+	size_t UsedImages;
+	size_t UsedSounds;
+	size_t UsedThemes;
 } GSM_FileSystemStatus;
 
 /**
@@ -220,7 +224,7 @@ GSM_Error GSM_SetFileAttributes(GSM_StateMachine * s, GSM_File * File);
  * \ingroup File
  */
 GSM_Error GSM_GetFilePart(GSM_StateMachine * s, GSM_File * File, int *Handle,
-			  int *Size);
+			  size_t *Size);
 
 /**
  * Adds file to filesystem. Call repeatedly until function returns
@@ -236,7 +240,7 @@ GSM_Error GSM_GetFilePart(GSM_StateMachine * s, GSM_File * File, int *Handle,
  *
  * \ingroup File
  */
-GSM_Error GSM_AddFilePart(GSM_StateMachine * s, GSM_File * File, int *Pos,
+GSM_Error GSM_AddFilePart(GSM_StateMachine * s, GSM_File * File, size_t *Pos,
 			  int *Handle);
 /**
  * Sends file to phone, it's up to phone to decide what to do with it.
@@ -253,7 +257,7 @@ GSM_Error GSM_AddFilePart(GSM_StateMachine * s, GSM_File * File, int *Pos,
  *
  * \ingroup File
  */
-GSM_Error GSM_SendFilePart(GSM_StateMachine * s, GSM_File * File, int *Pos,
+GSM_Error GSM_SendFilePart(GSM_StateMachine * s, GSM_File * File, size_t *Pos,
 			   int *Handle);
 /**
  * Acquires filesystem status.
@@ -303,6 +307,9 @@ GSM_Error GSM_AddFolder(GSM_StateMachine * s, GSM_File * File);
  * \ingroup File
  */
 GSM_Error GSM_DeleteFolder(GSM_StateMachine * s, unsigned char *ID);
+#ifdef	__cplusplus
+}
+#endif
 #endif
 
 /* Editor configuration

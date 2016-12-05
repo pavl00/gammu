@@ -5,9 +5,9 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: libGammu 1.36.0\n"
+"Project-Id-Version: libGammu 1.38.0\n"
 "Report-Msgid-Bugs-To: gammu-users@lists.sourceforge.net\n"
-"POT-Creation-Date: 2015-03-03 10:40+0100\n"
+"POT-Creation-Date: 2016-10-11 08:16+0200\n"
 "PO-Revision-Date: 2013-02-23 23:11+0200\n"
 "Last-Translator: Marcin Kozioł <lord_dark@wp.pl>\n"
 "Language-Team: Polish <http://hosted.weblate.org/projects/gammu/libgammu/pl/"
@@ -96,7 +96,7 @@ msgstr ""
 #: libgammu/gsmcomon.c:98
 #, fuzzy
 msgid ""
-"Frame not requested right now. See <http://wammu.eu/support/bugs/> for "
+"Frame not requested right now. See <https://wammu.eu/support/bugs/> for "
 "information how to report it."
 msgstr ""
 "Telefon wysłał nieznany sygnał. Zobacz <http://cihar.com/gammu/report> w "
@@ -105,7 +105,7 @@ msgstr ""
 #: libgammu/gsmcomon.c:99
 #, fuzzy
 msgid ""
-"Unknown response from phone. See <http://wammu.eu/support/bugs/> for "
+"Unknown response from phone. See <https://wammu.eu/support/bugs/> for "
 "information how to report it."
 msgstr ""
 "Telefon wysłał nieznany sygnał. Zobacz <http://cihar.com/gammu/report> w "
@@ -114,7 +114,7 @@ msgstr ""
 #: libgammu/gsmcomon.c:100
 #, fuzzy
 msgid ""
-"Unknown frame. See <http://wammu.eu/support/bugs/> for information how to "
+"Unknown frame. See <https://wammu.eu/support/bugs/> for information how to "
 "report it."
 msgstr ""
 "Telefon wysłał nieznany sygnał. Zobacz <http://cihar.com/gammu/report> w "
@@ -226,8 +226,8 @@ msgid ""
 "Nobody is perfect, some bug appeared in protocol implementation. Please "
 "contact authors."
 msgstr ""
-"Nikt nie jest perfekcyjny, pojawił się błąd w implementacji protokołu. "
-"Proszę skontaktować się z autorami."
+"Nikt nie jest doskonały, pojawił się błąd w implementacji protokołu. Proszę "
+"skontaktować się z autorami."
 
 #: libgammu/gsmcomon.c:121
 msgid "Transfer was canceled by phone, maybe you pressed cancel on phone."
@@ -344,9 +344,8 @@ msgid "Desired functionality has been disabled on compile time."
 msgstr "Żądana funkcjonalność została wyłączona podczas kompilacji."
 
 #: libgammu/gsmcomon.c:146
-#, fuzzy
 msgid "Bluetooth configuration requires channel option."
-msgstr "Konfiguracja bluetootha wymaga podania kanału."
+msgstr "Konfiguracja Bluetooth wymaga podania kanału."
 
 #: libgammu/gsmcomon.c:147
 #, fuzzy
@@ -400,12 +399,44 @@ msgstr "Pozycja jest pusta"
 msgid "Network error."
 msgstr "Brak błędów."
 
-#: libgammu/gsmcomon.c:189
+#: libgammu/gsmcomon.c:157
+#, fuzzy
+#| msgid "Invalid data given to phone."
+msgid "Invalid database version."
+msgstr "Wysłano niepoprawne dane do telefonu."
+
+#: libgammu/gsmcomon.c:158
+msgid "Failed to initialize DB driver."
+msgstr ""
+
+#: libgammu/gsmcomon.c:159
+#, fuzzy
+#| msgid "Failed to connect to phone"
+msgid "Failed to configure DB driver."
+msgstr "Nie można nawiązać połączenia z telefonem"
+
+#: libgammu/gsmcomon.c:160
+#, fuzzy
+#| msgid "Failed to connect to phone"
+msgid "Failed to connect to database."
+msgstr "Nie można nawiązać połączenia z telefonem"
+
+#: libgammu/gsmcomon.c:161
+#, fuzzy
+#| msgid "Connection test"
+msgid "Database connection timeout."
+msgstr "Test połączenia"
+
+#: libgammu/gsmcomon.c:162
+msgid "Error in executing SQL query."
+msgstr ""
+
+#: libgammu/gsmcomon.c:195
 #, fuzzy
 msgid "Unknown error description."
 msgstr "Nieznany opis błędu."
 
-#: libgammu/phone/dummy/dummy.c:630
+#: libgammu/phone/dummy/dummy.c:610
 #, fuzzy
 msgid "Templates"
 msgstr "Szablony"
@@ -447,7 +478,7 @@ msgid "SIM"
 msgstr "SIM"
 
 #: libgammu/phone/nokia/dct4s40/6510/n6510.c:579 libgammu/phone/pfunc.c:41
-#: libgammu/phone/s60/s60phone.c:1773
+#: libgammu/phone/s60/s60phone.c:1779
 msgid "Inbox"
 msgstr "Skrzynka odbiorcza"
 
@@ -492,7 +523,7 @@ msgstr "Skrzynka nadawcza"
 msgid "Pager"
 msgstr "Pager"
 
-#: libgammu/phone/pfunc.c:42 libgammu/phone/s60/s60phone.c:1774
+#: libgammu/phone/pfunc.c:42 libgammu/phone/s60/s60phone.c:1780
 msgid "Outbox"
 msgstr "Skrzynka nadawcza"
 

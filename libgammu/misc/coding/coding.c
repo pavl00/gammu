@@ -195,19 +195,23 @@ size_t UnicodeLength(const unsigned char *str)
 }
 
 /* Convert Unicode char saved in src to dest */
-int EncodeWithUnicodeAlphabet(const unsigned char *src, wchar_t *dest)
+int EncodeWithUnicodeAlphabet(const unsigned char *src, gammu_char_t *dest)
 {
 	int retval;
+	wchar_t out = 0;
 
-        switch (retval = mbtowc(dest, src, MB_CUR_MAX)) {
-                case -1 :
+	retval = mbtowc(&out, src, MB_CUR_MAX);
+	*dest = out;
+
+	switch (retval) {
+		case -1 :
 		case  0 : return 1;
-                default : return retval;
-        }
+		default : return retval;
+	}
 }
 
 /* Convert Unicode char saved in src to dest */
-int DecodeWithUnicodeAlphabet(wchar_t src, unsigned char *dest)
+int DecodeWithUnicodeAlphabet(gammu_char_t src, unsigned char *dest)
 {
         int retval;
 
@@ -223,7 +227,7 @@ int DecodeWithUnicodeAlphabet(wchar_t src, unsigned char *dest)
 void DecodeUnicode (const unsigned char *src, char *dest)
 {
 	int		i=0,o=0;
-	wchar_t		value, second;
+	gammu_char_t		value, second;
 
 	while (src[(2*i)+1]!=0x00 || src[2*i]!=0x00) {
 		value = src[i * 2] * 256 + src[i * 2 + 1];
@@ -279,9 +283,9 @@ char *DecodeUnicodeConsole(const unsigned char *src)
 }
 
 /* Encode string to Unicode. Len is number of input chars */
-void DecodeISO88591 (unsigned char *dest, const char *src, int len)
+void DecodeISO88591 (unsigned char *dest, const char *src, size_t len)
 {
-	int i;
+	size_t i;
 
 	for (i = 0; i < len; i++) {
 		/* Hack for Euro sign */
@@ -297,16 +301,45 @@ void DecodeISO88591 (unsigned char *dest, const char *src, int len)
 	dest[(2 * i) + 1] = 0;
 }
 
-/* Encode string to Unicode. Len is number of input chars */
-void EncodeUnicode (unsigned char *dest, const char *src, int len)
+/**
+ * Stores UTF16 char in output
+ *
+ * Returns 1 if additional output was used
+ */
+size_t StoreUTF16 (unsigned char *dest, gammu_char_t wc)
 {
-	int 		i_len = 0, o_len;
- 	wchar_t 	wc;
+	gammu_char_t tmp;
+
+	if (wc > 0xffff) {
+		wc = wc - 0x10000;
+		tmp = 0xD800 | (wc >> 10);
+		dest[0]	= (tmp >> 8) & 0xff;
+		dest[1]	= tmp & 0xff;
+
+		tmp = 0xDC00 | (wc & 0x3ff);
+
+		dest[2]	= (tmp >> 8) & 0xff;
+		dest[3]	= tmp & 0xff;
+
+		return 1;
+	}
+
+	dest[0]	= (wc >> 8) & 0xff;
+	dest[1]	= wc & 0xff;
+	return 0;
+}
+
+/* Encode string to Unicode. Len is number of input chars */
+void EncodeUnicode (unsigned char *dest, const char *src, size_t len)
+{
+	size_t 		i_len = 0, o_len;
+ 	gammu_char_t 	wc;
 
 	for (o_len = 0; i_len < len; o_len++) {
 		i_len += EncodeWithUnicodeAlphabet(&src[i_len], &wc);
-		dest[o_len*2]		= (wc >> 8) & 0xff;
-		dest[(o_len*2)+1]	= wc & 0xff;
+		if (StoreUTF16(dest + o_len * 2, wc)) {
+			o_len++;
+		}
  	}
 	dest[o_len*2]		= 0;
 	dest[(o_len*2)+1]	= 0;
@@ -325,9 +358,10 @@ int DecodeWithBCDAlphabet(unsigned char value)
 	return 10*(value & 0x0f)+(value >> 4);
 }
 
-void DecodeBCD (unsigned char *dest, const unsigned char *src, int len)
+void DecodeBCD (unsigned char *dest, const unsigned char *src, size_t len)
 {
-	int i,current=0,digit;
+	size_t i,current=0;
+	int digit;
 
 	for (i = 0; i < len; i++) {
 	        digit=src[i] & 0x0f;
@@ -338,9 +372,9 @@ void DecodeBCD (unsigned char *dest, const unsigned char *src, int len)
 	dest[current]=0;
 }
 
-void EncodeBCD (unsigned char *dest, const unsigned char *src, int len, gboolean fill)
+void EncodeBCD (unsigned char *dest, const unsigned char *src, size_t len, gboolean fill)
 {
-	int i,current=0;
+	size_t i,current=0;
 
 	for (i = 0; i < len; i++) {
         	if (i & 0x01) {
@@ -378,20 +412,28 @@ char EncodeWithHexBinAlphabet (int digit)
 	return 0;
 }
 
-void DecodeHexUnicode (unsigned char *dest, const char *src, size_t len)
+gboolean DecodeHexUnicode (unsigned char *dest, const char *src, size_t len)
 {
 	size_t i, current = 0;
+	int val0, val1, val2, val3;
 
 	for (i = 0; i < len ; i += 4) {
-		dest[current++] =
-			(DecodeWithHexBinAlphabet(src[i + 0]) << 4) +
-			DecodeWithHexBinAlphabet(src[i + 1]);
-		dest[current++] =
-			(DecodeWithHexBinAlphabet(src[i + 2]) << 4) +
-			DecodeWithHexBinAlphabet(src[i + 3]);
+		val0 = DecodeWithHexBinAlphabet(src[i + 0]);
+		val1 = DecodeWithHexBinAlphabet(src[i + 1]);
+		val2 = DecodeWithHexBinAlphabet(src[i + 2]);
+		val3 = DecodeWithHexBinAlphabet(src[i + 3]);
+
+		if (val0 < 0 || val1 < 0 || val2 < 0 || val3 < 0) {
+			return FALSE;
+		}
+
+		dest[current++] = (val0 << 4) + val1;
+		dest[current++] = (val2 << 4) + val3;
 	}
 	dest[current++] = 0;
 	dest[current] = 0;
+
+	return TRUE;
 }
 
 void EncodeHexUnicode (char *dest, const unsigned char *src, size_t len)
@@ -399,9 +441,10 @@ void EncodeHexUnicode (char *dest, const unsigned char *src, size_t len)
 	EncodeHexBin(dest, src, len * 2);
 }
 
-gboolean DecodeHexBin (unsigned char *dest, const unsigned char *src, int len)
+gboolean DecodeHexBin (unsigned char *dest, const unsigned char *src, size_t len)
 {
-	int i,current=0, low, high;
+	size_t i,current=0;
+	int low, high;
 
 	for (i = 0; i < len/2 ; i++) {
 		low = DecodeWithHexBinAlphabet(src[i*2+1]);
@@ -539,16 +582,289 @@ void DecodeDefault (unsigned char *dest, const unsigned char *src, size_t len, g
  * 1. original char (Unicode) 2. destination char (Unicode)
  */
 static unsigned char ConvertTable[] =
-"\x00\xc0\x00\x41\x00\xe0\x00\x61\x00\xc1\x00\x41\x00\xe1\x00\x61\x00\xc2\x00\x41\x00\xe2\x00\x61\x00\xc3\x00\x41\x00\xe3\x00\x61\x1e\xa0\x00\x41\x1e\xa1\x00\x61\x1e\xa2\x00\x41\x1e\xa3\x00\x61\x1e\xa4\x00\x41\x1e\xa5\x00\x61\x1e\xa6\x00\x41\x1e\xa7\x00\x61\x1e\xa8\x00\x41\x1e\xa9\x00\x61\x1e\xaa\x00\x41\x1e\xab\x00\x61\x1e\xac\x00\x41\x1e\xad\x00\x61\x1e\xae\x00\x41\x1e\xaf\x00\x61\x1e\xb0\x00\x41\x1e\xb1\x00\x61\x1e\xb2\x00\x41\x1e\xb3\x00\x61\x1e\xb4\x00\x41\x1e\xb5\x00\x61\x1e\xb6\x00\x41\x1e\xb7\x00\x61\x01\xcd\x00\x41\x01\xce\x00\x61\x01\x00\x00\x41\x01\x01\x00\x61\x01\x02\x00\x41\x01\x03\x00\x61\x01\x04\x00\x41\x01\x05\x00\x61\x01\xfb\x00\x61\x01\x06\x00\x43\x01\x07\x00\x63\x01\x08\x00\x43\x01\x09\x00\x63\x01\x0a\x00\x43\x01\x0b\x00\x63\x01\x0c\x00\x43\x01\x0d\x00\x63\x00\xe7"\
-"\x00\x63\x01\x0e\x00\x44\x01\x0f\x00\x64\x01\x10\x00\x44\x01\x11\x00\x64\x00\xc8\x00\x45\x00\xca\x00\x45\x00\xea\x00\x65\x00\xcb\x00\x45\x00\xeb\x00\x65\x1e\xb8\x00\x45\x1e\xb9\x00\x65\x1e\xba\x00\x45\x1e\xbb\x00\x65\x1e\xbc\x00\x45\x1e\xbd\x00\x65\x1e\xbe\x00\x45\x1e\xbf\x00\x65\x1e\xc0\x00\x45\x1e\xc1\x00\x65\x1e\xc2\x00\x45\x1e\xc3\x00\x65\x1e\xc4\x00\x45\x1e\xc5\x00\x65\x1e\xc6\x00\x45\x1e\xc7\x00\x65\x01\x12\x00\x45\x01\x13\x00\x65\x01\x14\x00\x45\x01\x15\x00\x65\x01\x16\x00\x45\x01\x17\x00\x65\x01\x18\x00\x45\x01\x19\x00\x65\x01\x1a\x00\x45\x01\x1b\x00\x65\x01\x1c\x00\x47\x01\x1d\x00\x67\x01\x1e\x00\x47\x01\x1f\x00\x67\x01\x20\x00\x47\x01\x21\x00\x67\x01\x22\x00\x47\x01\x23\x00\x67\x01\x24\x00\x48\x01\x25\x00\x68\x01\x26\x00\x48\x01\x27\x00\x68\x00\xcc\x00\x49\x00\xcd\x00\x49\x00\xed"\
-"\x00\x69\x00\xce\x00\x49\x00\xee\x00\x69\x00\xcf\x00\x49\x00\xef\x00\x69\x01\x28\x00\x49\x01\x29\x00\x69\x01\x2a\x00\x49\x01\x2b\x00\x69\x01\x2c\x00\x49\x01\x2d\x00\x69\x01\x2e\x00\x49\x01\x2f\x00\x69\x01\x30\x00\x49\x01\x31\x00\x69\x01\xcf\x00\x49\x01\xd0\x00\x69\x1e\xc8\x00\x49\x1e\xc9\x00\x69\x1e\xca\x00\x49\x1e\xcb\x00\x69\x01\x34\x00\x4a\x01\x35\x00\x6a\x01\x36\x00\x4b\x01\x37\x00\x6b\x01\x39\x00\x4c\x01\x3a\x00\x6c\x01\x3b\x00\x4c\x01\x3c\x00\x6c\x01\x3d\x00\x4c\x01\x3e\x00\x6c\x01\x3f\x00\x4c\x01\x40\x00\x6c\x01\x41\x00\x4c\x01\x42\x00\x6c\x01\x43\x00\x4e\x01\x44\x00\x6e\x01\x45\x00\x4e\x01\x46\x00\x6e\x01\x47\x00\x4e\x01\x48\x00\x6e\x01\x49\x00\x6e\x00\xd2\x00\x4f\x00\xd3\x00\x4f\x00\xf3\x00\x6f\x00\xd4\x00\x4f\x00\xf4\x00\x6f\x00\xd5\x00\x4f\x00\xf5\x00\x6f\x01\x4c\x00\x4f\x01\x4d"\
-"\x00\x6f\x01\x4e\x00\x4f\x01\x4f\x00\x6f\x01\x50\x00\x4f\x01\x51\x00\x6f\x01\xa0\x00\x4f\x01\xa1\x00\x6f\x01\xd1\x00\x4f\x01\xd2\x00\x6f\x1e\xcc\x00\x4f\x1e\xcd\x00\x6f\x1e\xce\x00\x4f\x1e\xcf\x00\x6f\x1e\xd0\x00\x4f\x1e\xd1\x00\x6f\x1e\xd2\x00\x4f\x1e\xd3\x00\x6f\x1e\xd4\x00\x4f\x1e\xd5\x00\x6f\x1e\xd6\x00\x4f\x1e\xd7\x00\x6f\x1e\xd8\x00\x4f\x1e\xd9\x00\x6f\x1e\xda\x00\x4f\x1e\xdb\x00\x6f\x1e\xdc\x00\x4f\x1e\xdd\x00\x6f\x1e\xde\x00\x4f\x1e\xdf\x00\x6f\x1e\xe0\x00\x4f\x1e\xe1\x00\x6f\x1e\xe2\x00\x4f\x1e\xe3\x00\x6f\x01\x54\x00\x52\x01\x55\x00\x72\x01\x56\x00\x52\x01\x57\x00\x72\x01\x58\x00\x52\x01\x59\x00\x72\x01\x5a\x00\x53\x01\x5b\x00\x73\x01\x5c\x00\x53\x01\x5d\x00\x73\x01\x5e\x00\x53\x01\x5f\x00\x73\x01\x60\x00\x53\x01\x61\x00\x73\x01\x62\x00\x54\x01\x63\x00\x74\x01\x64\x00\x54\x01\x65"\
-"\x00\x74\x01\x66\x00\x54\x01\x67\x00\x74\x00\xd9\x00\x55\x00\xda\x00\x55\x00\xfa\x00\x75\x00\xdb\x00\x55\x00\xfb\x00\x75\x01\x68\x00\x55\x01\x69\x00\x75\x01\x6a\x00\x55\x01\x6b\x00\x75\x01\x6c\x00\x55\x01\x6d\x00\x75\x01\x6e\x00\x55\x01\x6f\x00\x75\x01\x70\x00\x55\x01\x71\x00\x75\x01\x72\x00\x55\x01\x73\x00\x75\x01\xaf\x00\x55\x01\xb0\x00\x75\x01\xd3\x00\x55\x01\xd4\x00\x75\x01\xd5\x00\x55\x01\xd6\x00\x75\x01\xd7\x00\x55\x01\xd8\x00\x75\x01\xd9\x00\x55\x01\xda\x00\x75\x01\xdb\x00\x55\x01\xdc\x00\x75\x1e\xe4\x00\x55\x1e\xe5\x00\x75\x1e\xe6\x00\x55\x1e\xe7\x00\x75\x1e\xe8\x00\x55\x1e\xe9\x00\x75\x1e\xea\x00\x55\x1e\xeb\x00\x75\x1e\xec\x00\x55\x1e\xed\x00\x75\x1e\xee\x00\x55\x1e\xef\x00\x75\x1e\xf0\x00\x55\x1e\xf1\x00\x75\x01\x74\x00\x57\x01\x75\x00\x77\x1e\x80\x00\x57\x1e\x81\x00\x77\x1e\x82"\
-"\x00\x57\x1e\x83\x00\x77\x1e\x84\x00\x57\x1e\x85\x00\x77\x00\xdd\x00\x59\x00\xfd\x00\x79\x00\xff\x00\x79\x01\x76\x00\x59\x01\x77\x00\x79\x01\x78\x00\x59\x1e\xf2\x00\x59\x1e\xf3\x00\x75\x1e\xf4\x00\x59\x1e\xf5\x00\x79\x1e\xf6\x00\x59\x1e\xf7\x00\x79\x1e\xf8\x00\x59\x1e\xf9\x00\x79\x01\x79\x00\x5a\x01\x7a\x00\x7a\x01\x7b\x00\x5a\x01\x7c\x00\x7a\x01\x7d\x00\x5a\x01\x7e\x00\x7a\x01\xfc\x00\xc6\x01\xfd\x00\xe6\x01\xfe\x00\xd8\x01\xff\x00\xf8\x00\x00";
+"\x00\xc0\x00\x41" \
+"\x00\xe0\x00\x61" \
+"\x00\xc1\x00\x41" \
+"\x00\xe1\x00\x61" \
+"\x00\xc2\x00\x41" \
+"\x00\xe2\x00\x61" \
+"\x00\xc3\x00\x41" \
+"\x00\xe3\x00\x61" \
+"\x1e\xa0\x00\x41" \
+"\x1e\xa1\x00\x61" \
+"\x1e\xa2\x00\x41" \
+"\x1e\xa3\x00\x61" \
+"\x1e\xa4\x00\x41" \
+"\x1e\xa5\x00\x61" \
+"\x1e\xa6\x00\x41" \
+"\x1e\xa7\x00\x61" \
+"\x1e\xa8\x00\x41" \
+"\x1e\xa9\x00\x61" \
+"\x1e\xaa\x00\x41" \
+"\x1e\xab\x00\x61" \
+"\x1e\xac\x00\x41" \
+"\x1e\xad\x00\x61" \
+"\x1e\xae\x00\x41" \
+"\x1e\xaf\x00\x61" \
+"\x1e\xb0\x00\x41" \
+"\x1e\xb1\x00\x61" \
+"\x1e\xb2\x00\x41" \
+"\x1e\xb3\x00\x61" \
+"\x1e\xb4\x00\x41" \
+"\x1e\xb5\x00\x61" \
+"\x1e\xb6\x00\x41" \
+"\x1e\xb7\x00\x61" \
+"\x01\xcd\x00\x41" \
+"\x01\xce\x00\x61" \
+"\x01\x00\x00\x41" \
+"\x01\x01\x00\x61" \
+"\x01\x02\x00\x41" \
+"\x01\x03\x00\x61" \
+"\x01\x04\x00\x41" \
+"\x01\x05\x00\x61" \
+"\x01\xfb\x00\x61" \
+"\x01\x06\x00\x43" \
+"\x01\x07\x00\x63" \
+"\x01\x08\x00\x43" \
+"\x01\x09\x00\x63" \
+"\x01\x0a\x00\x43" \
+"\x01\x0b\x00\x63" \
+"\x01\x0c\x00\x43" \
+"\x01\x0d\x00\x63" \
+"\x00\xe7\x00\x63" \
+"\x01\x0e\x00\x44" \
+"\x01\x0f\x00\x64" \
+"\x01\x10\x00\x44" \
+"\x01\x11\x00\x64" \
+"\x00\xc8\x00\x45" \
+"\x00\xca\x00\x45" \
+"\x00\xea\x00\x65" \
+"\x00\xcb\x00\x45" \
+"\x00\xeb\x00\x65" \
+"\x1e\xb8\x00\x45" \
+"\x1e\xb9\x00\x65" \
+"\x1e\xba\x00\x45" \
+"\x1e\xbb\x00\x65" \
+"\x1e\xbc\x00\x45" \
+"\x1e\xbd\x00\x65" \
+"\x1e\xbe\x00\x45" \
+"\x1e\xbf\x00\x65" \
+"\x1e\xc0\x00\x45" \
+"\x1e\xc1\x00\x65" \
+"\x1e\xc2\x00\x45" \
+"\x1e\xc3\x00\x65" \
+"\x1e\xc4\x00\x45" \
+"\x1e\xc5\x00\x65" \
+"\x1e\xc6\x00\x45" \
+"\x1e\xc7\x00\x65" \
+"\x01\x12\x00\x45" \
+"\x01\x13\x00\x65" \
+"\x01\x14\x00\x45" \
+"\x01\x15\x00\x65" \
+"\x01\x16\x00\x45" \
+"\x01\x17\x00\x65" \
+"\x01\x18\x00\x45" \
+"\x01\x19\x00\x65" \
+"\x01\x1a\x00\x45" \
+"\x01\x1b\x00\x65" \
+"\x01\x1c\x00\x47" \
+"\x01\x1d\x00\x67" \
+"\x01\x1e\x00\x47" \
+"\x01\x1f\x00\x67" \
+"\x01\x20\x00\x47" \
+"\x01\x21\x00\x67" \
+"\x01\x22\x00\x47" \
+"\x01\x23\x00\x67" \
+"\x01\x24\x00\x48" \
+"\x01\x25\x00\x68" \
+"\x01\x26\x00\x48" \
+"\x01\x27\x00\x68" \
+"\x00\xcc\x00\x49" \
+"\x00\xcd\x00\x49" \
+"\x00\xed\x00\x69" \
+"\x00\xce\x00\x49" \
+"\x00\xee\x00\x69" \
+"\x00\xcf\x00\x49" \
+"\x00\xef\x00\x69" \
+"\x01\x28\x00\x49" \
+"\x01\x29\x00\x69" \
+"\x01\x2a\x00\x49" \
+"\x01\x2b\x00\x69" \
+"\x01\x2c\x00\x49" \
+"\x01\x2d\x00\x69" \
+"\x01\x2e\x00\x49" \
+"\x01\x2f\x00\x69" \
+"\x01\x30\x00\x49" \
+"\x01\x31\x00\x69" \
+"\x01\xcf\x00\x49" \
+"\x01\xd0\x00\x69" \
+"\x1e\xc8\x00\x49" \
+"\x1e\xc9\x00\x69" \
+"\x1e\xca\x00\x49" \
+"\x1e\xcb\x00\x69" \
+"\x01\x34\x00\x4a" \
+"\x01\x35\x00\x6a" \
+"\x01\x36\x00\x4b" \
+"\x01\x37\x00\x6b" \
+"\x01\x39\x00\x4c" \
+"\x01\x3a\x00\x6c" \
+"\x01\x3b\x00\x4c" \
+"\x01\x3c\x00\x6c" \
+"\x01\x3d\x00\x4c" \
+"\x01\x3e\x00\x6c" \
+"\x01\x3f\x00\x4c" \
+"\x01\x40\x00\x6c" \
+"\x01\x41\x00\x4c" \
+"\x01\x42\x00\x6c" \
+"\x01\x43\x00\x4e" \
+"\x01\x44\x00\x6e" \
+"\x01\x45\x00\x4e" \
+"\x01\x46\x00\x6e" \
+"\x01\x47\x00\x4e" \
+"\x01\x48\x00\x6e" \
+"\x01\x49\x00\x6e" \
+"\x00\xd2\x00\x4f" \
+"\x00\xd3\x00\x4f" \
+"\x00\xf3\x00\x6f" \
+"\x00\xd4\x00\x4f" \
+"\x00\xf4\x00\x6f" \
+"\x00\xd5\x00\x4f" \
+"\x00\xf5\x00\x6f" \
+"\x01\x4c\x00\x4f" \
+"\x01\x4d\x00\x6f" \
+"\x01\x4e\x00\x4f" \
+"\x01\x4f\x00\x6f" \
+"\x01\x50\x00\x4f" \
+"\x01\x51\x00\x6f" \
+"\x01\xa0\x00\x4f" \
+"\x01\xa1\x00\x6f" \
+"\x01\xd1\x00\x4f" \
+"\x01\xd2\x00\x6f" \
+"\x1e\xcc\x00\x4f" \
+"\x1e\xcd\x00\x6f" \
+"\x1e\xce\x00\x4f" \
+"\x1e\xcf\x00\x6f" \
+"\x1e\xd0\x00\x4f" \
+"\x1e\xd1\x00\x6f" \
+"\x1e\xd2\x00\x4f" \
+"\x1e\xd3\x00\x6f" \
+"\x1e\xd4\x00\x4f" \
+"\x1e\xd5\x00\x6f" \
+"\x1e\xd6\x00\x4f" \
+"\x1e\xd7\x00\x6f" \
+"\x1e\xd8\x00\x4f" \
+"\x1e\xd9\x00\x6f" \
+"\x1e\xda\x00\x4f" \
+"\x1e\xdb\x00\x6f" \
+"\x1e\xdc\x00\x4f" \
+"\x1e\xdd\x00\x6f" \
+"\x1e\xde\x00\x4f" \
+"\x1e\xdf\x00\x6f" \
+"\x1e\xe0\x00\x4f" \
+"\x1e\xe1\x00\x6f" \
+"\x1e\xe2\x00\x4f" \
+"\x1e\xe3\x00\x6f" \
+"\x01\x54\x00\x52" \
+"\x01\x55\x00\x72" \
+"\x01\x56\x00\x52" \
+"\x01\x57\x00\x72" \
+"\x01\x58\x00\x52" \
+"\x01\x59\x00\x72" \
+"\x01\x5a\x00\x53" \
+"\x01\x5b\x00\x73" \
+"\x01\x5c\x00\x53" \
+"\x01\x5d\x00\x73" \
+"\x01\x5e\x00\x53" \
+"\x01\x5f\x00\x73" \
+"\x01\x60\x00\x53" \
+"\x01\x61\x00\x73" \
+"\x01\x62\x00\x54" \
+"\x01\x63\x00\x74" \
+"\x01\x64\x00\x54" \
+"\x01\x65\x00\x74" \
+"\x01\x66\x00\x54" \
+"\x01\x67\x00\x74" \
+"\x00\xd9\x00\x55" \
+"\x00\xda\x00\x55" \
+"\x00\xfa\x00\x75" \
+"\x00\xdb\x00\x55" \
+"\x00\xfb\x00\x75" \
+"\x01\x68\x00\x55" \
+"\x01\x69\x00\x75" \
+"\x01\x6a\x00\x55" \
+"\x01\x6b\x00\x75" \
+"\x01\x6c\x00\x55" \
+"\x01\x6d\x00\x75" \
+"\x01\x6e\x00\x55" \
+"\x01\x6f\x00\x75" \
+"\x01\x70\x00\x55" \
+"\x01\x71\x00\x75" \
+"\x01\x72\x00\x55" \
+"\x01\x73\x00\x75" \
+"\x01\xaf\x00\x55" \
+"\x01\xb0\x00\x75" \
+"\x01\xd3\x00\x55" \
+"\x01\xd4\x00\x75" \
+"\x01\xd5\x00\x55" \
+"\x01\xd6\x00\x75" \
+"\x01\xd7\x00\x55" \
+"\x01\xd8\x00\x75" \
+"\x01\xd9\x00\x55" \
+"\x01\xda\x00\x75" \
+"\x01\xdb\x00\x55" \
+"\x01\xdc\x00\x75" \
+"\x1e\xe4\x00\x55" \
+"\x1e\xe5\x00\x75" \
+"\x1e\xe6\x00\x55" \
+"\x1e\xe7\x00\x75" \
+"\x1e\xe8\x00\x55" \
+"\x1e\xe9\x00\x75" \
+"\x1e\xea\x00\x55" \
+"\x1e\xeb\x00\x75" \
+"\x1e\xec\x00\x55" \
+"\x1e\xed\x00\x75" \
+"\x1e\xee\x00\x55" \
+"\x1e\xef\x00\x75" \
+"\x1e\xf0\x00\x55" \
+"\x1e\xf1\x00\x75" \
+"\x01\x74\x00\x57" \
+"\x01\x75\x00\x77" \
+"\x1e\x80\x00\x57" \
+"\x1e\x81\x00\x77" \
+"\x1e\x82\x00\x57" \
+"\x1e\x83\x00\x77" \
+"\x1e\x84\x00\x57" \
+"\x1e\x85\x00\x77" \
+"\x00\xdd\x00\x59" \
+"\x00\xfd\x00\x79" \
+"\x00\xff\x00\x79" \
+"\x01\x76\x00\x59" \
+"\x01\x77\x00\x79" \
+"\x01\x78\x00\x59" \
+"\x1e\xf2\x00\x59" \
+"\x1e\xf3\x00\x75" \
+"\x1e\xf4\x00\x59" \
+"\x1e\xf5\x00\x79" \
+"\x1e\xf6\x00\x59" \
+"\x1e\xf7\x00\x79" \
+"\x1e\xf8\x00\x59" \
+"\x1e\xf9\x00\x79" \
+"\x01\x79\x00\x5a" \
+"\x01\x7a\x00\x7a" \
+"\x01\x7b\x00\x5a" \
+"\x01\x7c\x00\x7a" \
+"\x01\x7d\x00\x5a" \
+"\x01\x7e\x00\x7a" \
+"\x01\xfc\x00\xc6" \
+"\x01\xfd\x00\xe6" \
+"\x01\xfe\x00\xd8" \
+"\x01\xff\x00\xf8" \
+"\x00\x00";
 
 void EncodeDefault(unsigned char *dest, const unsigned char *src, size_t *len, gboolean UseExtensions, unsigned char *ExtraAlphabet)
 {
-	size_t 	i,current=0,j,z;
+	size_t 	i,current=0;
+	int j,z;
 	char 	ret;
 	gboolean	FoundSpecial,FoundNormal;
 
@@ -667,7 +983,7 @@ void FindDefaultAlphabetLen(const unsigned char *src, size_t *srclen, size_t *sm
 
 #define ByteMask ((1 << Bits) - 1)
 
-int GSM_UnpackEightBitsToSeven(int offset, int in_length, int out_length,
+int GSM_UnpackEightBitsToSeven(size_t offset, size_t in_length, size_t out_length,
                            const unsigned char *input, unsigned char *output)
 {
 	/* (c) by Pavel Janik and Pawel Kot */
@@ -675,11 +991,11 @@ int GSM_UnpackEightBitsToSeven(int offset, int in_length, int out_length,
         unsigned char *output_pos 	= output; /* Current pointer to the output buffer */
         const unsigned char *input_pos  	= input;  /* Current pointer to the input buffer */
         unsigned char Rest 	= 0x00;
-        int	      Bits;
+        size_t	      Bits;
 
         Bits = offset ? offset : 7;
 
-        while ((input_pos - input) < in_length) {
+        while ((size_t)(input_pos - input) < in_length) {
 
                 *output_pos = ((*input_pos & ByteMask) << (7 - Bits)) | Rest;
                 Rest = *input_pos >> Bits;
@@ -690,7 +1006,7 @@ int GSM_UnpackEightBitsToSeven(int offset, int in_length, int out_length,
                 if ((input_pos != input) || (Bits == 7)) output_pos++;
                 input_pos++;
 
-                if ((output_pos - output) >= out_length) break;
+                if ((size_t)(output_pos - output) >= out_length) break;
 
                 /* After reading 7 octets we have read 7 full characters but
                    we have 7 bits as well. This is the next character */
@@ -707,7 +1023,7 @@ int GSM_UnpackEightBitsToSeven(int offset, int in_length, int out_length,
         return output_pos - output;
 }
 
-int GSM_PackSevenBitsToEight(int offset, const unsigned char *input, unsigned char *output, int length)
+int GSM_PackSevenBitsToEight(size_t offset, const unsigned char *input, unsigned char *output, size_t length)
 {
 	/* (c) by Pavel Janik and Pawel Kot */
 
@@ -724,7 +1040,7 @@ int GSM_PackSevenBitsToEight(int offset, const unsigned char *input, unsigned ch
                 output_pos++;
         }
 
-        while ((input_pos - input) < length) {
+        while ((size_t)(input_pos - input) < length) {
                 unsigned char Byte = *input_pos;
 
                 *output_pos = Byte >> (7 - Bits);
@@ -842,7 +1158,7 @@ out:
 int GSM_PackSemiOctetNumber(const unsigned char *Number, unsigned char *Output, gboolean semioctet)
 {
 	unsigned char	format;
-	int		length, i, skip = 0;
+	size_t		length, i, skip = 0;
 	unsigned char    *buffer;
 
 	length = UnicodeLength(Number);
@@ -962,12 +1278,12 @@ void ReadUnicodeFile(unsigned char *Dest, const unsigned char *Source)
 	Dest[current]	= 0;
 }
 
-INLINE int GetBit(unsigned char *Buffer, size_t BitNum)
+int GetBit(unsigned char *Buffer, size_t BitNum)
 {
 	return Buffer[BitNum / 8] & (1 << (7 - (BitNum % 8)));
 }
 
-INLINE int SetBit(unsigned char *Buffer, size_t BitNum)
+int SetBit(unsigned char *Buffer, size_t BitNum)
 {
 	return Buffer[BitNum / 8] |= 1 << (7 - (BitNum % 8));
 }
@@ -1066,7 +1382,7 @@ void GetBufferI(unsigned char 	*Source,
 {
 	size_t l=0,z,i=0;
 
-	z = 1<<(BitsToProcess-1);
+	z = 1 << (BitsToProcess - 1);
 
 	while (i!=BitsToProcess) {
 		if (GetBit(Source, (*CurrentBit)+i)) l=l+z;
@@ -1081,9 +1397,9 @@ void GetBufferI(unsigned char 	*Source,
  * We replace single ~ chars into it. When user give double ~, it's replaced
  * to single ~
  */
-void EncodeUnicodeSpecialNOKIAChars(unsigned char *dest, const unsigned char *src, int len)
+void EncodeUnicodeSpecialNOKIAChars(unsigned char *dest, const unsigned char *src, size_t len)
 {
-	int 	i,current = 0;
+	size_t 	i,current = 0;
 	gboolean 	special=FALSE;
 
 	for (i = 0; i < len; i++) {
@@ -1115,9 +1431,9 @@ void EncodeUnicodeSpecialNOKIAChars(unsigned char *dest, const unsigned char *sr
 	dest[current] = 0x00;
 }
 
-void DecodeUnicodeSpecialNOKIAChars(unsigned char *dest, const unsigned char *src, int len)
+void DecodeUnicodeSpecialNOKIAChars(unsigned char *dest, const unsigned char *src, size_t len)
 {
-	int i=0,current=0;
+	size_t i=0,current=0;
 
 	for (i=0;i<len;i++) {
 		switch (src[2*i]) {
@@ -1154,7 +1470,7 @@ void DecodeUnicodeSpecialNOKIAChars(unsigned char *dest, const unsigned char *sr
 gboolean mywstrncasecmp(unsigned const  char *a, unsigned const  char *b, int num)
 {
  	int 		i;
-  	wchar_t 	wc,wc2;
+  	gammu_char_t 	wc,wc2;
 
         if (a == NULL || b == NULL) return FALSE;
 
@@ -1190,7 +1506,7 @@ gboolean myiswspace(unsigned const char *src)
  	int 		o;
 	unsigned char	dest[10];
 #endif
- 	wchar_t 	wc;
+ 	gammu_char_t 	wc;
 
 	wc = src[1] | (src[0] << 8);
 
@@ -1224,9 +1540,9 @@ gboolean myiswspace(unsigned const char *src)
 
 unsigned char *mywstrstr (const unsigned char *haystack, const unsigned char *needle)
 {
-/* One crazy define to convert unicode used in Gammu to standard wchar_t */
-#define tolowerwchar(x) (towlower((wchar_t)( (((&(x))[0] & 0xff) << 8) | (((&(x))[1] & 0xff)) )))
-	register wint_t a, b, c;
+/* One crazy define to convert unicode used in Gammu to standard gammu_char_t */
+#define tolowerwchar(x) (towlower((gammu_char_t)( (((&(x))[0] & 0xff) << 8) | (((&(x))[1] & 0xff)) )))
+	register gammu_int_t a, b, c;
 	register const unsigned char *rhaystack, *rneedle;
 
 
@@ -1580,32 +1896,73 @@ gboolean EncodeUTF8(char *dest, const unsigned char *src)
 }
 
 /* Decode UTF8 char to Unicode char */
-int DecodeWithUTF8Alphabet(const unsigned char *src, wchar_t *dest, int len)
+int DecodeWithUTF8Alphabet(const unsigned char *src, gammu_char_t *dest, size_t len)
 {
-	if (len < 1) return 0;
-	if (src[0] < 128) {
-		(*dest) = src[0];
+	gammu_char_t src0, src1, src2, src3;
+	if (len < 1) {
+		return 0;
+	}
+	src0 = src[0];
+
+	// 1-byte sequence (no continuation bytes)
+	if ((src0 & 0x80) == 0) {
+		(*dest) = src0;
 		return 1;
 	}
-	if (src[0] < 194) return 0;
-	if (src[0] < 224) {
-		if (len < 2) return 0;
-		(*dest) = (src[0]-192)*64 + (src[1]-128);
-		return 2;
+
+	if (len < 2) {
+		return 0;
 	}
-	if (src[0] < 240) {
-		if (len < 3) return 0;
-		(*dest) = (src[0]-224)*4096 + (src[1]-128)*64 + (src[2]-128);
-		return 3;
+	src1 = src[1];
+
+	// 2-byte sequence
+	if ((src0 & 0xE0) == 0xC0) {
+		(*dest) = ((src0 & 0x1F) << 6) | (src1 & 0x3f);
+		if (*dest >= 0x80) {
+			return 2;
+		} else {
+			return 0;
+		}
 	}
+
+	if (len < 3) {
+		return 0;
+	}
+	src2 = src[2];
+
+	// 3-byte sequence (may include unpaired surrogates)
+	if ((src0 & 0xF0) == 0xE0) {
+		(*dest) = ((src0 & 0x0F) << 12) | ((src1 & 0x3f) << 6) | (src2 & 0x3f);
+		if ((*dest) >= 0x0800) {
+			if ((*dest) >= 0xD800 && (*dest) <= 0xDFFF) {
+				return 0;
+			}
+			return 3;
+		}
+	}
+
+	if (len < 4) {
+		return 0;
+	}
+	src3 = src[3];
+
+	// 4-byte sequence
+	if ((src0 & 0xF8) == 0xF0) {
+		(*dest) = ((src0 & 0x07) << 0x12) | ((src1 & 0x3f) << 0x0C) |
+			((src2 & 0x3f) << 0x06) | (src3 & 0x3f);
+		if ((*dest) >= 0x010000 && (*dest) <= 0x10FFFF) {
+			return 4;
+		}
+	}
+
 	return 0;
 }
 
 
 /* Make Unicode string from ISO-8859-1 string */
-void DecodeISO88591QuotedPrintable(unsigned char *dest, const unsigned char *src, int len)
+void DecodeISO88591QuotedPrintable(unsigned char *dest, const unsigned char *src, size_t len)
 {
-	int 		i = 0, j = 0;
+	size_t 		i = 0, j = 0;
 
 	while (i < len) {
 		if (src[i] == '=' && i + 2 < len
@@ -1625,11 +1982,12 @@ void DecodeISO88591QuotedPrintable(unsigned char *dest, const unsigned char *src
 }
 
 /* Make Unicode string from UTF8 string */
-void DecodeUTF8QuotedPrintable(unsigned char *dest, const char *src, int len)
+void DecodeUTF8QuotedPrintable(unsigned char *dest, const char *src, size_t len)
 {
-	int 		i,j=0,z;
+	size_t 		i,j=0;
+	int		z;
 	unsigned char	mychar[10];
-	wchar_t		ret;
+	gammu_char_t		ret;
 
 	for (i = 0; i<=len; ) {
 		z=0;
@@ -1649,43 +2007,48 @@ void DecodeUTF8QuotedPrintable(unsigned char *dest, const char *src, int len)
 		if (z>0) {
 			i += z * 3;
 			/*  we ignore wrong sequence */
-			if (DecodeWithUTF8Alphabet(mychar,&ret,z)==0) continue;
+			if (DecodeWithUTF8Alphabet(mychar, &ret, z)==0) continue;
 		} else {
-			i+=EncodeWithUnicodeAlphabet(&src[i], &ret);
+			i += EncodeWithUnicodeAlphabet(&src[i], &ret);
 		}
-		dest[j++] = (ret >> 8) & 0xff;
-		dest[j++] = ret & 0xff;
+		if (StoreUTF16(dest + j, ret)) {
+			j += 4;
+		} else {
+			j += 2;
+		}
 	}
 	dest[j++] = 0;
 	dest[j] = 0;
 }
 
-void DecodeUTF8(unsigned char *dest, const char *src, int len)
+void DecodeUTF8(unsigned char *dest, const char *src, size_t len)
 {
-	int 		i=0,j=0,z;
-	wchar_t		ret;
+	size_t 		i=0,j=0,z;
+	gammu_char_t		ret;
 
 	while (i < len) {
-		z = DecodeWithUTF8Alphabet(src+i,&ret,len-i);
-		if (z<2) {
-			i+=EncodeWithUnicodeAlphabet(&src[i], &ret);
-		} else {
-			i+=z;
+		z = DecodeWithUTF8Alphabet(src+i, &ret, len - i);
+		if (z < 1) {
+			break;
 		}
-		dest[j++] = (ret >> 8) & 0xff;
-		dest[j++] = ret & 0xff;
+		i += z;
+		if (StoreUTF16(dest + j, ret)) {
+			j += 4;
+		} else {
+			j += 2;
+		}
 	}
 	dest[j++] = 0;
 	dest[j] = 0;
 }
 
-void DecodeXMLUTF8(unsigned char *dest, const char *src, int len)
+void DecodeXMLUTF8(unsigned char *dest, const char *src, size_t len)
 {
 	char *tmp;
 	char *pos, *pos_end;
 	const char *lastpos;
 	char *entity;
-	unsigned long int c;
+	unsigned long long int c;
 	int tmplen;
 
 	/* Allocate buffer */
@@ -1735,7 +2098,7 @@ void DecodeXMLUTF8(unsigned char *dest, const char *src, int len)
 			} else {
 				c = strtoull(entity + 1, NULL, 10);
 			}
-			dbgprintf(NULL, "Unicode char 0x%04lx\n", c);
+			dbgprintf(NULL, "Unicode char 0x%04llx\n", c);
 			tmplen = strlen(tmp);
 			tmplen += EncodeWithUTF8Alphabet(c, tmp + tmplen);
 			tmp[tmplen] = 0;
@@ -1764,10 +2127,10 @@ void DecodeXMLUTF8(unsigned char *dest, const char *src, int len)
 	tmp=NULL;
 }
 
-void DecodeUTF7(unsigned char *dest, const unsigned char *src, int len)
+void DecodeUTF7(unsigned char *dest, const unsigned char *src, size_t len)
 {
-	int 		i=0,j=0,z,p;
-	wchar_t		ret;
+	size_t 		i=0,j=0,z,p;
+	gammu_char_t		ret;
 
 	while (i<=len) {
 		if (len-5>=i) {
@@ -1780,13 +2143,19 @@ void DecodeUTF7(unsigned char *dest, const unsigned char *src, int len)
 				i+=z+2;
 			} else {
 				i+=EncodeWithUnicodeAlphabet(&src[i], &ret);
-				dest[j++] = (ret >> 8) & 0xff;
-				dest[j++] = ret & 0xff;
+				if (StoreUTF16(dest + j, ret)) {
+					j += 4;
+				} else {
+					j += 2;
+				}
 			}
 		} else {
 			i+=EncodeWithUnicodeAlphabet(&src[i], &ret);
-			dest[j++] = (ret >> 8) & 0xff;
-			dest[j++] = ret & 0xff;
+			if (StoreUTF16(dest + j, ret)) {
+				j += 4;
+			} else {
+				j += 2;
+			}
 		}
 	}
 	dest[j++] = 0;

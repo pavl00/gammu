@@ -14,7 +14,7 @@ This file use ini file syntax, see :ref:`ini`.
 
 Configuration file of gammu-smsd consists of at least two sections -
 :config:section:`[gammu]` and :config:section:`[smsd]`. For :ref:`gammu-smsd-sql`
-you can also use :config:section:`[sql]`.
+you can also use :config:section:`[sql]` and :config:section:`[tables]`.
 
 The :config:section:`[gammu]` section is configuration of a phone connection
 and is same as described in :ref:`gammurc` with the only exception that
@@ -49,6 +49,12 @@ configures how much messages gammu emits.
     Configure SQL queries used by :ref:`gammu-smsd-sql`, you usually don't have to modify them.
 
     .. seealso:: :ref:`Configurable queries`
+
+.. config:section:: [tables]
+
+    Configure SQL table names used by :ref:`gammu-smsd-sql`, you usually don't have to modify them.
+
+    .. seealso:: :ref:`Configurable tables`
 
 General parameters of SMS daemon
 --------------------------------
@@ -242,6 +248,17 @@ General parameters of SMS daemon
 
     Default is 1 (enabled).
 
+.. config:option:: CheckNetwork
+
+    .. versionadded:: 1.37.90
+
+    Whether to check network status periodically.
+
+    If phone is reported to be not on the network, SMSD
+    tries to power it on.
+
+    Default is 1 (enabled).
+
 .. config:option:: ResetFrequency
 
     The number of seconds between performing a preventive soft reset in order to
@@ -282,7 +299,7 @@ General parameters of SMS daemon
 .. config:option:: DeliveryReportDelay
 
     Delay in seconds how long is still delivery report considered valid. This
-    depends on brokeness of your network (delivery report should have same
+    depends on brokenness of your network (delivery report should have same
     timestamp as sent message). Increase this if delivery reports are not paired
     with sent messages.
 
@@ -296,10 +313,15 @@ General parameters of SMS daemon
     When you set PhoneID, all messages (including injected ones) will be marked
     by this string (stored as SenderID in the database) and it allows more SMS
     daemons to share a single database. 
+
+    SMSD daemon will in such case send :ref:`outbox` messages only with
+    matching or empty SenderID.
     
     This option has actually no effect with :ref:`gammu-smsd-files`.
 
 .. config:option:: SMSC
+
+    .. versionadded:: 1.36.2
 
     SMSC number to use for sending messages if not specified in the message
     (see options of :ref:`gammu-smsd-inject`).
@@ -455,14 +477,14 @@ database:
 
 .. config:option:: SkipSMSCNumber
 
-    When you send sms from some SMS centere you can have delivery reports from
+    When you send sms from some SMS centers you can have delivery reports from
     other SMSC number. You can set here number of this SMSC used by you and Gammu
     will not check it's number during assigning reports to sent SMS.
 
 .. config:option:: Driver
 
     SQL driver to use, Gammu supports several native drivers and generic
-    interface using ODBC and DBI. Availability of the backends depdens on
+    interface using ODBC and DBI. Availability of the backends depends on
     compile time options.
 
     Available drivers:
@@ -500,6 +522,7 @@ database:
     * ``mssql`` - Microsoft SQL Server
     * ``sybase`` - Sybase
     * ``access`` - Microsoft Access
+    * ``oracle`` - Oracle
     * ``odbc`` - Generic ODBC
 
     .. versionadded:: 1.28.93

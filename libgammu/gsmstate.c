@@ -329,7 +329,7 @@ static GSM_Error GSM_RegisterAllConnections(GSM_StateMachine *s, const char *con
 #ifdef GSM_ENABLE_BLUEOBEX
 	GSM_RegisterConnection(s, GCT_BLUEOBEX,   &BlueToothDevice,&OBEXProtocol);
 #endif
-#if !defined(WIN32) && defined(HAVE_PTHREAD)
+#ifdef GSM_ENABLE_PROXY
 #ifdef GSM_ENABLE_S60
 	GSM_RegisterConnection(s, GCT_PROXYS60,	  &ProxyDevice,&S60Protocol);
 #endif
@@ -462,7 +462,7 @@ GSM_Error GSM_RegisterAllPhoneModules(GSM_StateMachine *s)
 				s->ConnectionType ==  GCT_BLUEPHONET) {
 			/* Try to detect phone type */
 			if (strcmp(model->model, "unknown") == 0 && model->features[0] == 0) {
-				smprintf(s, "WARNING: phone not known, please report it to authors (see <http://wammu.eu/support/bugs/>). Thank you.\n");
+				smprintf(s, "WARNING: phone not known, please report it to authors (see <https://wammu.eu/support/bugs/>). Thank you.\n");
 				if (strncmp(s->Phone.Data.Model, "RM-", 3) == 0) {
 					/* 167 is really a wild guess */
 					if (atoi(s->Phone.Data.Model + 3) > 167) {
@@ -984,7 +984,7 @@ GSM_Error GSM_AbortOperation(GSM_StateMachine * s)
 }
 
 GSM_Error GSM_WaitForOnce(GSM_StateMachine *s, unsigned const char *buffer,
-			  int length, int type, int timeout)
+			  size_t length, int type, int timeout)
 {
 	GSM_Phone_Data *Phone = &s->Phone.Data;
 	GSM_Protocol_Message sentmsg;
@@ -1027,7 +1027,7 @@ GSM_Error GSM_WaitForOnce(GSM_StateMachine *s, unsigned const char *buffer,
 }
 
 GSM_Error GSM_WaitFor (GSM_StateMachine *s, unsigned const char *buffer,
-		       int length, int type, int timeout,
+		       size_t length, int type, int timeout,
 		       GSM_Phone_RequestID request)
 {
 	GSM_Phone_Data		*Phone = &s->Phone.Data;
@@ -1137,6 +1137,8 @@ GSM_Error GSM_DispatchMessage(GSM_StateMachine *s)
 	GSM_Reply_Function	*Reply;
 	int			reply;
 
+	s->MessagesCount++;
+
 	GSM_DumpMessageTextRecv(s, msg->Buffer, msg->Length, msg->Type);
 	GSM_DumpMessageBinaryRecv(s, msg->Buffer, msg->Length, msg->Type);
 
@@ -1183,7 +1185,7 @@ GSM_Error GSM_DispatchMessage(GSM_StateMachine *s)
 	}
 
 	if (disp) {
-		smprintf(s,". Please report the error, see <http://wammu.eu/support/bugs/>. Thank you\n");
+		smprintf(s,". Please report the error, see <https://wammu.eu/support/bugs/>. Thank you\n");
 		if (Phone->SentMsg != NULL) {
 			smprintf(s,"LAST SENT frame ");
 			smprintf(s, "type 0x%02X/length %ld", Phone->SentMsg->Type, (long)Phone->SentMsg->Length);
@@ -1533,7 +1535,7 @@ fail:
 	return error;
 }
 
-void GSM_DumpMessageText_Custom(GSM_StateMachine *s, unsigned const char *message, int messagesize, int type, const char *text)
+void GSM_DumpMessageText_Custom(GSM_StateMachine *s, unsigned const char *message, size_t messagesize, int type, const char *text)
 {
 	GSM_Debug_Info *curdi;
 
@@ -1544,25 +1546,25 @@ void GSM_DumpMessageText_Custom(GSM_StateMachine *s, unsigned const char *messag
 			curdi->dl == DL_TEXTDATE ||
 			curdi->dl == DL_TEXTALLDATE) {
 		smprintf(s, "%s ", text);
-		smprintf(s, "type 0x%02X/length 0x%02X/%i",
-				type, messagesize, messagesize);
+		smprintf(s, "type 0x%02X/length 0x%02lX/%ld",
+				type, (long)messagesize, (long)messagesize);
 		DumpMessage(curdi, message, messagesize);
 	}
 }
 
-void GSM_DumpMessageText(GSM_StateMachine *s, unsigned const char *message, int messagesize, int type)
+void GSM_DumpMessageText(GSM_StateMachine *s, unsigned const char *message, size_t messagesize, int type)
 {
 	GSM_DumpMessageText_Custom(s, message, messagesize, type, "SENDING frame");
 }
 
-void GSM_DumpMessageTextRecv(GSM_StateMachine *s, unsigned const char *message, int messagesize, int type)
+void GSM_DumpMessageTextRecv(GSM_StateMachine *s, unsigned const char *message, size_t messagesize, int type)
 {
 	GSM_DumpMessageText_Custom(s, message, messagesize, type, "RECEIVED frame");
 }
 
-void GSM_DumpMessageBinary_Custom(GSM_StateMachine *s, unsigned const char *message, int messagesize, int type, int direction)
+void GSM_DumpMessageBinary_Custom(GSM_StateMachine *s, unsigned const char *message, size_t messagesize, int type, int direction)
 {
-	int i=0;
+	size_t i=0;
 	GSM_Debug_Info *curdi;
 
 	curdi = GSM_GetDI(s);
@@ -1570,20 +1572,20 @@ void GSM_DumpMessageBinary_Custom(GSM_StateMachine *s, unsigned const char *mess
 	if (curdi->dl == DL_BINARY) {
 		smprintf(s,"%c", direction);
 		smprintf(s,"%c",type);
-		smprintf(s,"%c",messagesize/256);
-		smprintf(s,"%c",messagesize%256);
+		smprintf(s,"%c",(int)(messagesize/256));
+		smprintf(s,"%c",(int)(messagesize%256));
 
 		for (i=0;i<messagesize;i++) {
 			smprintf(s,"%c",message[i]);
 		}
 	}
 }
-void GSM_DumpMessageBinary(GSM_StateMachine *s, unsigned const char *message, int messagesize, int type)
+void GSM_DumpMessageBinary(GSM_StateMachine *s, unsigned const char *message, size_t messagesize, int type)
 {
 	GSM_DumpMessageBinary_Custom(s, message, messagesize, type, 0x01);
 }
 
-void GSM_DumpMessageBinaryRecv(GSM_StateMachine *s, unsigned const char *message, int messagesize, int type)
+void GSM_DumpMessageBinaryRecv(GSM_StateMachine *s, unsigned const char *message, size_t messagesize, int type)
 {
 	GSM_DumpMessageBinary_Custom(s, message, messagesize, type, 0x02);
 }

@@ -55,13 +55,13 @@ NORETURN void version(void)
 	printf("  - %s\n", "ODBC");
 #endif
 	printf("\n");
-	printf("Copyright (C) 2003 - 2015 Michal Cihar <michal@cihar.com> and other authors.\n");
+	printf("Copyright (C) 2003 - 2016 Michal Cihar <michal@cihar.com> and other authors.\n");
 	printf("\n");
 	printf("License GPLv2: GNU GPL version 2 <https://spdx.org/licenses/GPL-2.0>.\n");
 	printf("This is free software: you are free to change and redistribute it.\n");
 	printf("There is NO WARRANTY, to the extent permitted by law.\n");
 	printf("\n");
-	printf("Check <http://wammu.eu/gammu/> for updates.\n");
+	printf("Check <https://wammu.eu/gammu/> for updates.\n");
 	printf("\n");
 	exit(0);
 }
@@ -149,6 +149,7 @@ int process_commandline(int argc, char **argv, SMSD_Parameters * params)
 				help();
 				exit(0);
 			default:
+				fprintf(stderr, "Parameter -%c not known!\n", opt);
 				wrong_params();
 				break;
 		}
@@ -228,6 +229,7 @@ int main(int argc, char **argv)
 		SMSD_FreeConfig(config);
 		return 2;
 	}
+	SMSD_EnableGlobalDebug(config);
 
 	error = SMSD_InjectSMS(config, &sms, newid);
 	if (error != ERR_NONE) {

@@ -42,9 +42,11 @@ loglevel = textall
 
 [smsd]
 commtimeout = 5
+multiparttimeout = 5
+ReceiveFrequency = 5
 debuglevel = 255
 logfile = stderr
-runonreceive = @CMAKE_CURRENT_BINARY_DIR@/smsd-test-$SERVICE/received.sh
+runonreceive = @SH_BIN@ @CMAKE_CURRENT_BINARY_DIR@/smsd-test-$SERVICE/received.sh
 service = files
 inboxpath = @CMAKE_CURRENT_BINARY_DIR@/smsd-test-$SERVICE/inbox/
 outboxpath = @CMAKE_CURRENT_BINARY_DIR@/smsd-test-$SERVICE/outbox/
@@ -92,12 +94,13 @@ $SMSD_INJECT_CMD -c "$CONFIG_PATH" TEXT 123465 -text "Lorem ipsum."
 
 sleep 5
 
+# Incoming messages
 for sms in 10 16 26 ; do
     cp @CMAKE_CURRENT_SOURCE_DIR@/../tests/at-sms-encode/$sms.backup $DUMMY_PATH/sms/3/$sms
 done
 
 TIMEOUT=0
-while ! $SMSD_MONITOR_CMD -C -c "$CONFIG_PATH" -n 1 -d 0 | grep -q ";999999999999999;4;3;0;100;42" ; do
+while ! $SMSD_MONITOR_CMD -C -c "$CONFIG_PATH" -n 1 -d 0 | grep -q ";999999999999999;994299429942994;4;3;0;100;42" ; do
     $SMSD_MONITOR_CMD -C -c "$CONFIG_PATH" -n 1 -d 0
     sleep 1
     TIMEOUT=$(($TIMEOUT + 1))

@@ -15,6 +15,17 @@
     } \
 }
 
+#define test_string(expected, actual, length) \
+{ \
+    for (size_t i = 0; i < length; i++) { \
+        if ((unsigned char)expected[i] != actual[i]) { \
+            fprintf(stderr, "Test \"%s\" == \"%s\" failed!\n", ""#expected, ""#actual); \
+            fprintf(stderr, "[%d] \\x%02X != \\x%02X\n", (int)i, (unsigned char)expected[i], actual[i]); \
+            exit(2); \
+        } \
+    } \
+}
+
 #define gammu_test_result(error, text) \
 { \
 	if (error != ERR_NONE) {\

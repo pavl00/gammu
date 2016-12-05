@@ -17,7 +17,9 @@ Unicode strings
 
 The another major obstacle which is all around Gammu code is own
 implementation of unicode (UCS-2-BE) strings. This code should be dropped and
-wchar_t used instead.
+use some standard library for that. Note that wchar_t is probably not a good
+choice here as it's 16-bit on Windows and thus can not store emojis and other
+supplemental plan unicode chars.
 
 Hardcoded length for strings
 ----------------------------
@@ -30,13 +32,13 @@ Unsigned char mess
 
 In many cases ``unsigned char`` is used without any reason.
 
-Extendability of libGammu
+Extensibility of libGammu
 -------------------------
 
 Current way of adding protocol specific functionality from applications using
 libGammu is broken. Actually only application using this is Gammu utility.
 This option should be either completely removed or rewritten from scratch not
-to be dependant on libGammu internals.
+to be dependent on libGammu internals.
 
 Built time configuration
 ------------------------

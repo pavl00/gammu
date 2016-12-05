@@ -95,9 +95,9 @@ static PrintErrorEntry PrintErrorEntries[] = {
 	{ERR_DEVICEREADERROR, "DEVICEREADERROR",		N_("Error during reading from the device.")},
 	{ERR_DEVICEPARITYERROR, "DEVICEPARITYERROR",		N_("Can't set parity on the device.")},
 	{ERR_TIMEOUT, "TIMEOUT",			N_("No response in specified timeout. Probably phone not connected.")},
-	{ERR_FRAMENOTREQUESTED, "FRAMENOTREQUESTED",		N_("Frame not requested right now. See <http://wammu.eu/support/bugs/> for information how to report it.")},
-	{ERR_UNKNOWNRESPONSE, "UNKNOWNRESPONSE",		N_("Unknown response from phone. See <http://wammu.eu/support/bugs/> for information how to report it.")},
-	{ERR_UNKNOWNFRAME, "UNKNOWNFRAME",		N_("Unknown frame. See <http://wammu.eu/support/bugs/> for information how to report it.")},
+	{ERR_FRAMENOTREQUESTED, "FRAMENOTREQUESTED",		N_("Frame not requested right now. See <https://wammu.eu/support/bugs/> for information how to report it.")},
+	{ERR_UNKNOWNRESPONSE, "UNKNOWNRESPONSE",		N_("Unknown response from phone. See <https://wammu.eu/support/bugs/> for information how to report it.")},
+	{ERR_UNKNOWNFRAME, "UNKNOWNFRAME",		N_("Unknown frame. See <https://wammu.eu/support/bugs/> for information how to report it.")},
 	{ERR_UNKNOWNCONNECTIONTYPESTRING, "UNKNOWNCONNECTIONTYPESTRING",N_("Unknown connection type string. Check config file.")},
 	{ERR_UNKNOWNMODELSTRING, "UNKNOWNMODELSTRING",	N_("Unknown model type string. Check config file.")},
 	{ERR_SOURCENOTAVAILABLE, "SOURCENOTAVAILABLE",	N_("Some functions not available for your system (disabled in config or not implemented).")},
@@ -154,6 +154,12 @@ static PrintErrorEntry PrintErrorEntries[] = {
 	{ERR_INSTALL_NOT_FOUND, "INSTALL_NOT_FOUND", N_("Installation data not found, please consult debug log and/or documentation for more details.")},
 	{ERR_READ_ONLY, "READ_ONLY", N_("Entry is read only.")},
 	{ERR_NETWORK_ERROR, "NETWORK_ERROR", N_("Network error.")},
+	{ERR_DB_VERSION, "DB_VERSION", N_("Invalid database version.")},
+	{ERR_DB_DRIVER, "DB_DRIVER", N_("Failed to initialize DB driver.")},
+	{ERR_DB_CONFIG, "DB_CONFIG", N_("Failed to configure DB driver.")},
+	{ERR_DB_CONNECT, "DB_CONNECT", N_("Failed to connect to database.")},
+	{ERR_DB_TIMEOUT, "DB_TIMEOUT", N_("Database connection timeout.")},
+	{ERR_SQL, "SQL", N_("Error in executing SQL query.")},
 
 	{0,	"",				""}
 };

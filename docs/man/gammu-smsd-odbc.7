@@ -1,6 +1,6 @@
 .\" Man page generated from reStructuredText.
 .
-.TH "GAMMU-SMSD-ODBC" "7" "November 29, 2015" "1.36.8" "Gammu"
+.TH "GAMMU-SMSD-ODBC" "7" "Dec 01, 2016" "1.38.0" "Gammu"
 .SH NAME
 gammu-smsd-odbc \- gammu-smsd(1) backend using ODBC abstraction layer to use any supported database as a message storage
 .
@@ -61,11 +61,33 @@ this manual to do that.
 You specify data source name (DSN) as \fBHost\fP in
 gammu\-smsdrc\&. The data source is configured depending on your platform.
 .sp
+\fBNOTE:\fP
+.INDENT 0.0
+.INDENT 3.5
+Please remember that SMSD might be running in different context than your
+user (separate account on Linux or as as service on Windows), so the ODBC
+DSN needs to be configured as system wide in this case (system DSN on
+Windows or in global configuration on Linux).
+.UNINDENT
+.UNINDENT
+.sp
 On Microsoft Windows, you can find instructions on Microsoft website:
 \fI\%http://support.microsoft.com/kb/305599\fP
 .sp
 For unixODBC this is documented in the user manual:
 \fI\%http://www.unixodbc.org/doc/UserManual/\fP
+.SH CREATING TABLES
+.sp
+Prior to starting SMSD you have to create tables it will use. Gammu ships SQL
+scripts for several databases to do that:
+.INDENT 0.0
+.IP \(bu 2
+mysql\-create
+.IP \(bu 2
+pgsql\-create
+.IP \(bu 2
+sqlite\-create
+.UNINDENT
 .SH EXAMPLE
 .sp
 Example configuration:

@@ -65,6 +65,13 @@ void smsd_resume(int signum)
 	standby = FALSE;
 }
 
+#ifdef WIN32
+VOID CALLBACK TimerRoutine(PVOID lpParam, BOOLEAN TimerOrWaitFired)
+{
+	SMSD_Shutdown(config);
+}
+#endif
+
 NORETURN void version(void)
 {
 	printf("Gammu-smsd version %s\n", GAMMU_VERSION);
@@ -79,7 +86,7 @@ NORETURN void version(void)
 #ifdef HAVE_PIDFILE
 	printf("  - %s\n", "PID");
 #endif
-#ifdef HAVE_ALARM
+#if defined(HAVE_ALARM) || defined(WIN32)
 	printf("  - %s\n", "ALARM");
 #endif
 #ifdef HAVE_UID
@@ -115,13 +122,13 @@ NORETURN void version(void)
 	printf("  - %s\n", "ODBC");
 #endif
 	printf("\n");
-	printf("Copyright (C) 2003 - 2015 Michal Cihar <michal@cihar.com> and other authors.\n");
+	printf("Copyright (C) 2003 - 2016 Michal Cihar <michal@cihar.com> and other authors.\n");
 	printf("\n");
 	printf("License GPLv2: GNU GPL version 2 <https://spdx.org/licenses/GPL-2.0>.\n");
 	printf("This is free software: you are free to change and redistribute it.\n");
 	printf("There is NO WARRANTY, to the extent permitted by law.\n");
 	printf("\n");
-	printf("Check <http://wammu.eu/gammu/> for updates.\n");
+	printf("Check <https://wammu.eu/gammu/> for updates.\n");
 	printf("\n");
 	exit(0);
 }
@@ -156,7 +163,7 @@ void help(void)
 	print_option_param("G", "group", "GROUP", "run daemon as a group");
 #endif
 	print_option_param("f", "max-failures", "NUM", "number of failures before terminating");
-#ifdef HAVE_ALARM
+#if defined(HAVE_ALARM) || defined(WIN32)
 	print_option_param("X", "suicide", "SECONDS", "kills itself after number of seconds");
 #endif
 #ifdef HAVE_WINDOWS_SERVICE
@@ -184,6 +191,9 @@ NORETURN void wrong_params(void)
 void process_commandline(int argc, char **argv, SMSD_Parameters * params)
 {
 	int opt;
+#ifdef WIN32
+	HANDLE hTimer = NULL;
+#endif
 
 #ifdef HAVE_GETOPT_LONG
 	struct option long_options[] = {
@@ -251,9 +261,13 @@ void process_commandline(int argc, char **argv, SMSD_Parameters * params)
 			case 'f':
 				params->max_failures = atoi(optarg);
 				break;
-#ifdef HAVE_ALARM
+#if defined(HAVE_ALARM) || defined(WIN32)
 			case 'X':
+#ifdef HAVE_ALARM
 				alarm(atoi(optarg));
+#elif defined(WIN32)
+				CreateTimerQueueTimer(&hTimer, NULL, (WAITORTIMERCALLBACK)TimerRoutine, NULL , atoi(optarg) * 1000, 0, 0);
+#endif
 				break;
 #endif
 #ifdef HAVE_DAEMON
@@ -305,6 +319,7 @@ void process_commandline(int argc, char **argv, SMSD_Parameters * params)
 				help();
 				exit(0);
 			default:
+				fprintf(stderr, "Parameter -%c not known!\n", opt);
 				wrong_params();
 				break;
 		}
@@ -492,6 +507,7 @@ read_config:
 		SMSD_FreeConfig(config);
 		return 2;
 	}
+	SMSD_EnableGlobalDebug(config);
 
 	if (!reconfigure)
 		configure_daemon(&params);

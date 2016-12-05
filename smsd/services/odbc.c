@@ -28,7 +28,7 @@
 
 static void SMSDODBC_LogError(GSM_SMSDConfig * Config, SQLRETURN origret, SQLSMALLINT handle_type, SQLHANDLE handle, const char *message)
 {
-	SQLINTEGER	 i = 0;
+	SQLSMALLINT	 i = 0;
 	SQLINTEGER	 native;
 	SQLCHAR	 state[ 7 ];
 	SQLCHAR	 text[256];
@@ -82,8 +82,7 @@ time_t SMSDODBC_GetDate(GSM_SMSDConfig * Config, SQL_result *res, unsigned int f
 
 const char *SMSDODBC_GetString(GSM_SMSDConfig * Config, SQL_result *res, unsigned int field)
 {
-	SQLLEN sqllen;
-	int size;
+	SQLLEN size;
 	SQLRETURN ret;
 	char shortbuffer[1];
 
@@ -93,19 +92,11 @@ const char *SMSDODBC_GetString(GSM_SMSDConfig * Config, SQL_result *res, unsigne
 	}
 
 	/* Figure out string length */
-	ret = SQLGetData(res->odbc, field + 1, SQL_C_CHAR, shortbuffer, 0, &sqllen);
+	ret = SQLGetData(res->odbc, field + 1, SQL_C_CHAR, shortbuffer, 0, &size);
 	if (!SQL_SUCCEEDED(ret)) {
 		SMSDODBC_LogError(Config, ret, SQL_HANDLE_STMT, res->odbc, "SQLGetData(string,0) failed");
 		return NULL;
 	}
-
-	/*
-	 * This hack seems to be needed to avoid type breakage on Win64, don't ask me why.
-	 *
-	 * Might be actually bug in MinGW compiler, but when using SQLLEN type below
-	 * anything fails (it does not match to SQL_NULL_DATA and realloc always fails).
-	 */
-	size = sqllen;
 
 	/* Did not we get NULL? */
 	if (size == SQL_NULL_DATA) {
@@ -116,12 +107,12 @@ const char *SMSDODBC_GetString(GSM_SMSDConfig * Config, SQL_result *res, unsigne
 	/* Allocate string */
 	Config->conn.odbc.retstr[field] = realloc(Config->conn.odbc.retstr[field], size + 1);
 	if (Config->conn.odbc.retstr[field] == NULL) {
-		SMSD_Log(DEBUG_ERROR, Config, "Field %d returning NULL, failed to allocate %d bytes of memory", field, size + 1);
+		SMSD_Log(DEBUG_ERROR, Config, "Field %d returning NULL, failed to allocate %ld bytes of memory", field, (long)(size + 1));
 		return NULL;
 	}
 
 	/* Actually grab result from database */
-	ret = SQLGetData(res->odbc, field + 1, SQL_C_CHAR, Config->conn.odbc.retstr[field], size + 1, &sqllen);
+	ret = SQLGetData(res->odbc, field + 1, SQL_C_CHAR, Config->conn.odbc.retstr[field], size + 1, &size);
 	if (!SQL_SUCCEEDED(ret)) {
 		SMSDODBC_LogError(Config, ret, SQL_HANDLE_STMT, res->odbc, "SQLGetData(string) failed");
 		return NULL;
@@ -164,7 +155,7 @@ void SMSDODBC_Free(GSM_SMSDConfig * Config)
 }
 
 /* Connects to database */
-static SQL_Error SMSDODBC_Connect(GSM_SMSDConfig * Config)
+static GSM_Error SMSDODBC_Connect(GSM_SMSDConfig * Config)
 {
 	SQLRETURN ret;
 	int field;
@@ -178,19 +169,19 @@ static SQL_Error SMSDODBC_Connect(GSM_SMSDConfig * Config)
 	ret = SQLAllocHandle (SQL_HANDLE_ENV, SQL_NULL_HANDLE, &Config->conn.odbc.env);
 	if (!SQL_SUCCEEDED(ret)) {
 		SMSDODBC_LogError(Config, ret, SQL_HANDLE_ENV, Config->conn.odbc.env, "SQLAllocHandle(ENV) failed");
-		return SQL_FAIL;
+		return ERR_DB_DRIVER;
 	}
 
 	ret = SQLSetEnvAttr (Config->conn.odbc.env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
 	if (!SQL_SUCCEEDED(ret)) {
 		SMSDODBC_LogError(Config, ret, SQL_HANDLE_ENV, Config->conn.odbc.env, "SQLSetEnvAttr failed");
-		return SQL_FAIL;
+		return ERR_DB_CONFIG;
 	}
 
 	ret = SQLAllocHandle (SQL_HANDLE_DBC, Config->conn.odbc.env, &Config->conn.odbc.dbc);
 	if (!SQL_SUCCEEDED(ret)) {
 		SMSDODBC_LogError(Config, ret, SQL_HANDLE_ENV, Config->conn.odbc.env, "SQLAllocHandle(DBC) failed");
-		return SQL_FAIL;
+		return ERR_DB_CONFIG;
 	}
 
 	ret = SQLConnect(Config->conn.odbc.dbc,
@@ -199,28 +190,28 @@ static SQL_Error SMSDODBC_Connect(GSM_SMSDConfig * Config)
 			  (SQLCHAR*)Config->password, SQL_NTS);
 	if (!SQL_SUCCEEDED(ret)) {
 		SMSDODBC_LogError(Config, ret, SQL_HANDLE_DBC, Config->conn.odbc.dbc, "SQLConnect failed");
-		return SQL_FAIL;
+		return ERR_DB_CONNECT;
 	}
 
 	ret = SQLGetInfo(Config->conn.odbc.dbc, SQL_DRIVER_NAME, driver_name, sizeof(driver_name), &len);
 	if (!SQL_SUCCEEDED(ret)) {
 		SMSDODBC_LogError(Config, ret, SQL_HANDLE_DBC, Config->conn.odbc.dbc, "SQLGetInfo failed");
-		return SQL_FAIL;
+		return ERR_DB_CONNECT;
 	} else{
 		SMSD_Log(DEBUG_NOTICE, Config, "Connected to driver %s", driver_name);
 	}
 
 
-	return SQL_OK;
+	return ERR_NONE;
 }
 
-static SQL_Error SMSDODBC_Query(GSM_SMSDConfig * Config, const char *query, SQL_result * res)
+static GSM_Error SMSDODBC_Query(GSM_SMSDConfig * Config, const char *query, SQL_result * res)
 {
 	SQLRETURN ret;
 
 	ret = SQLAllocHandle(SQL_HANDLE_STMT, Config->conn.odbc.dbc, &res->odbc);
 	if (!SQL_SUCCEEDED(ret)) {
-		return SQL_FAIL;
+		return ERR_SQL;
 	}
 
 	ret = SQLExecDirect (res->odbc, (SQLCHAR*)query, SQL_NTS);
@@ -230,11 +221,11 @@ static SQL_Error SMSDODBC_Query(GSM_SMSDConfig * Config, const char *query, SQL_
 	 * to SQLExecDirect returns SQL_NO_DATA.
 	 */
 	if (SQL_SUCCEEDED(ret) || ret == SQL_NO_DATA) {
-		return SQL_OK;
+		return ERR_NONE;
 	}
 
 	SMSDODBC_LogError(Config, ret, SQL_HANDLE_STMT, res->odbc, "SQLExecDirect failed");
-	return SQL_FAIL;
+	return ERR_SQL;
 }
 
 /* free sql results */
@@ -279,6 +270,8 @@ char * SMSDODBC_QuoteString(GSM_SMSDConfig * Config, const char *string)
 			strcasecmp(driver_name, "pgsql") == 0 ||
 			strcasecmp(driver_name, "native_pgsql") == 0 ||
 			strncasecmp(driver_name, "sqlite", 6) == 0 ||
+			strncasecmp(driver_name, "oracle", 6) == 0 ||
+			strncasecmp(driver_name, "freetds", 6) == 0 ||
 			strcasecmp(Config->driver, "access") == 0) {
 		quote = '\'';
 	}
@@ -342,7 +335,7 @@ unsigned long SMSDODBC_AffectedRows(GSM_SMSDConfig * Config, SQL_result *res)
 		SMSDODBC_LogError(Config, ret, SQL_HANDLE_DBC, Config->conn.odbc.dbc, "SQLRowCount failed");
 		return 0;
 	}
-	return count;
+	return (unsigned long)count;
 }
 
 struct GSM_SMSDdbobj SMSDODBC = {

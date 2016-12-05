@@ -1854,7 +1854,9 @@ static void ReadPbkEntry(INI_Section *file_info, char *section, GSM_MemoryEntry 
 			}
 			sprintf(buffer,"Entry%02iType",num);
 			readvalue = ReadCFGText(file_info, section, buffer, UseUnicode);
-			if (strcasecmp(readvalue,"NumberGeneral") == 0) {
+			if (readvalue == NULL) {
+				Pbk->Entries[Pbk->EntriesNum].EntryType = PBK_Number_Other;
+			} else if (strcasecmp(readvalue,"NumberGeneral") == 0) {
 				Pbk->Entries[Pbk->EntriesNum].EntryType = PBK_Number_General;
 			} else if (strcasecmp(readvalue,"NumberVideo") == 0) {
 				Pbk->Entries[Pbk->EntriesNum].EntryType = PBK_Number_Video;
@@ -2074,8 +2076,10 @@ loadpicture:
 			if (readvalue != NULL) {
 				/* We allocate here more memory than is actually required */
 				Pbk->Entries[Pbk->EntriesNum].Picture.Buffer = (char *)malloc(strlen(readvalue));
-				if (Pbk->Entries[Pbk->EntriesNum].Picture.Buffer == NULL)
+				if (Pbk->Entries[Pbk->EntriesNum].Picture.Buffer == NULL) {
+					free(readvalue);
 					break;
+				}
 
 				Pbk->Entries[Pbk->EntriesNum].Picture.Length =
 					DecodeBASE64(readvalue, Pbk->Entries[Pbk->EntriesNum].Picture.Buffer, strlen(readvalue));
@@ -2100,8 +2104,12 @@ loadtext:
 				Pbk->Entries[Pbk->EntriesNum].SMSList[i] = 0;
 				sprintf(buffer,"Entry%02iSMSList%02i",num,i);
 				readvalue = ReadCFGText(file_info, section, buffer, UseUnicode);
-				if (readvalue==NULL) break;
+				if (readvalue==NULL) {
+					free(readvalue);
+					break;
+				}
 				Pbk->Entries[Pbk->EntriesNum].SMSList[i] = atoi(readvalue);
+				free(readvalue);
 				i++;
 			}
 loaddone:
@@ -3020,7 +3028,9 @@ static void ReadProfileEntry(INI_Section *file_info, char *section, GSM_Profile 
 			if (!unknown) {
 				sprintf(buffer,"Value%02i",num);
 				readvalue = ReadCFGText(file_info, section, buffer, UseUnicode);
-				if (strcasecmp(readvalue,"Level1") == 0) {
+				if (readvalue == NULL) {
+					Profile->FeatureValue[Profile->FeaturesNumber]=PROFILE_VOLUME_LEVEL1;
+				} else if (strcasecmp(readvalue,"Level1") == 0) {
 					Profile->FeatureValue[Profile->FeaturesNumber]=PROFILE_VOLUME_LEVEL1;
 					if (Profile->FeatureID[Profile->FeaturesNumber]==Profile_KeypadTone) {
 						Profile->FeatureValue[Profile->FeaturesNumber]=PROFILE_KEYPAD_LEVEL1;
@@ -3232,9 +3242,15 @@ GSM_Error LoadBackup(const char *FileName, GSM_Backup *backup)
 	}
 
 	readvalue = ReadCFGText(file_info, buffer, "IMEI", UseUnicode);
-	if (readvalue!=NULL) strcpy(backup->IMEI,readvalue);
+	if (readvalue!=NULL) {
+		strncpy(backup->IMEI, readvalue, sizeof(backup->IMEI) - 1);
+		backup->IMEI[sizeof(backup->IMEI) - 1] = 0;
+	}
 	readvalue = ReadCFGText(file_info, buffer, "Phone", UseUnicode);
-	if (readvalue!=NULL) strcpy(backup->Model,readvalue);
+	if (readvalue!=NULL) {
+		strncpy(backup->Model, readvalue, sizeof(backup->Model) - 1);
+		backup->Model[sizeof(backup->Model) - 1] = 0;
+	}
 	readvalue = ReadCFGText(file_info, buffer, "Creator", UseUnicode);
 	if (readvalue!=NULL) {
 		strncpy(backup->Creator,readvalue, sizeof(backup->Creator) - 1);
@@ -4002,10 +4018,16 @@ GSM_Error SaveTextComment(FILE *file, unsigned char *comment)
 static GSM_Error SaveSMSBackupTextFile(FILE *file, GSM_SMS_Backup *backup)
 {
 	int 		i=0;
-	unsigned char 	buffer[10000]={0};
+	unsigned char 	*buffer;
 	const char *s;
 	GSM_DateTime	DT;
 	GSM_Error error;
+
+	buffer = malloc(10000);
+	if (buffer == NULL) {
+		return ERR_MOREMEMORY;
+	}
+	buffer[0] = 0;
 
 	fprintf(file, BACKUP_MAIN_HEADER "\n");
 	fprintf(file, BACKUP_INFO_HEADER "\n");
@@ -4023,14 +4045,20 @@ static GSM_Error SaveSMSBackupTextFile(FILE *file, GSM_SMS_Backup *backup)
 			case SMS_Coding_Unicode_No_Compression:
 			case SMS_Coding_Default_No_Compression:
 				error = SaveTextComment(file, backup->SMS[i]->Text);
-				if (error != ERR_NONE) return error;
+				if (error != ERR_NONE) {
+					free(buffer);
+					return error;
+				}
 				break;
 			default:
 				break;
 		}
 		if (backup->SMS[i]->PDU == SMS_Deliver) {
 			error = SaveBackupText(file, "SMSC", backup->SMS[i]->SMSC.Number, FALSE);
-			if (error != ERR_NONE) return error;
+			if (error != ERR_NONE) {
+				free(buffer);
+				return error;
+			}
 			if (backup->SMS[i]->ReplyViaSameSMSC) {
 				fprintf(file,"SMSCReply = TRUE\n");
 			}
@@ -4043,7 +4071,10 @@ static GSM_Error SaveSMSBackupTextFile(FILE *file, GSM_SMS_Backup *backup)
 		if (backup->SMS[i]->DateTime.Year != 0) {
 			fprintf(file,"DateTime");
 			error = SaveVCalDateTime(file,&backup->SMS[i]->DateTime, FALSE);
-			if (error != ERR_NONE) return error;
+			if (error != ERR_NONE) {
+				free(buffer);
+				return error;
+			}
 		}
 		fprintf(file,"State = ");
 		switch (backup->SMS[i]->State) {
@@ -4053,9 +4084,15 @@ static GSM_Error SaveSMSBackupTextFile(FILE *file, GSM_SMS_Backup *backup)
 			case SMS_UnSent	: fprintf(file,"UnSent\n");	break;
 		}
 		error = SaveBackupText(file, "Number", backup->SMS[i]->Number, FALSE);
-		if (error != ERR_NONE) return error;
+		if (error != ERR_NONE) {
+			free(buffer);
+			return error;
+		}
 		error = SaveBackupText(file, "Name", backup->SMS[i]->Name, FALSE);
-		if (error != ERR_NONE) return error;
+		if (error != ERR_NONE) {
+			free(buffer);
+			return error;
+		}
 		if (backup->SMS[i]->UDH.Type != UDH_NoUDH) {
 			EncodeHexBin(buffer,backup->SMS[i]->UDH.Text,backup->SMS[i]->UDH.Length);
 			fprintf(file,"UDH = %s\n",buffer);
@@ -4084,6 +4121,7 @@ static GSM_Error SaveSMSBackupTextFile(FILE *file, GSM_SMS_Backup *backup)
 		fprintf(file,"\n");
 		i++;
 	}
+	free(buffer);
 	return ERR_NONE;
 }
 

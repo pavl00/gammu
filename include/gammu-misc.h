@@ -7,6 +7,10 @@
 #ifndef __gammu_misc_h
 #define __gammu_misc_h
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #ifdef WIN32
 #  define WIN32_LEAN_AND_MEAN
 #  include <windows.h>
@@ -28,7 +32,7 @@
  *
  * \return Length of read line, -1 on error.
  */
-int GetLine(FILE * File, char *Line, int count);
+size_t GetLine(FILE * File, char *Line, int count);
 
 /**
  * Gets Gammu library version.
@@ -107,13 +111,6 @@ extern void GSM_InitLocales(const char *path);
 #define NORETURN
 #endif
 
-/* Clang has bug in handling inline functions */
-#if defined(__GNUC__) && !defined(__clang__)
-#define INLINE inline
-#else
-#define INLINE
-#endif
-
 /* Working snprintf on MSVC */
 #ifdef _MSC_VER
 #define snprintf _snprintf
@@ -178,6 +175,9 @@ gboolean GSM_IsNewerVersion(const char *latest_version,
   */
 GSM_Error GSM_SetPower(GSM_StateMachine *s, gboolean on);
 
+#ifdef	__cplusplus
+}
+#endif
 #endif
 
 /* Editor configuration

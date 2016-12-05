@@ -3,13 +3,13 @@
 #
 
 
-%define so_ver 7
+%define so_ver 8
 
 # Change if using tar.gz sources
 %define extension   bz2
 
 Name:           gammu
-Version:        1.36.8
+Version:        1.38.0
 Release:        0
 Summary:        Mobile phone management utility
 License:        GPL-2.0
@@ -18,8 +18,8 @@ Group:          Hardware/Mobile
 %else
 Group:          Applications/Communications
 %endif
-Url:            http://wammu.eu/gammu/
-Source0:        http://dl.cihar.com/gammu/releases/%{name}-%{version}.tar.%{extension}
+Url:            https://wammu.eu/gammu/
+Source0:        https://dl.cihar.com/gammu/releases/%{name}-%{version}.tar.%{extension}
 
 # Set to 0 to disable PostgreSQL support
 %define pqsql     1
@@ -74,11 +74,11 @@ Source0:        http://dl.cihar.com/gammu/releases/%{name}-%{version}.tar.%{exte
 %endif
 %else
 # Fedora / Redhat / Centos
-%if 0%{?fedora_version} || 0%{?centos_version} || 0%{?rhel_version} || 0%{?fedora} || 0%{?rhel}
-%if 0%{?opensuse_bs}
-%define dist_usb_libs libusb1-devel
+%if 0%{?fedora_version} || 0%{?centos_version} || 0%{?rhel_version} || 0%{?fedora} || 0%{?rhel} || 0%{?scilin_version}
+%if 0%{?fedora_version} || 0%{?centos_version} >= 700 || 0%{?rhel_version} >= 700 || 0%{?scilin_version} >= 700
+%define dist_usb_libs libusbx-devel
 %else
-%define dist_usb_libs libusb-1_0-devel
+%define dist_usb_libs libusb1-devel
 %endif
 %define dist_dbi_libs libdbi-devel libdbi-dbd-sqlite sqlite
 %define dist_bluez_libs bluez-libs-devel >= 2.0
@@ -387,12 +387,16 @@ fi
 %doc %{_mandir}/man7/gammu-smsd-run.7*
 %doc %{_mandir}/man7/gammu-smsd-sql.7*
 %doc %{_mandir}/man7/gammu-smsd-tables.7*
+%dir %{_libexecdir}/systemd
+%dir %{_libexecdir}/systemd/system
 %{_libexecdir}/systemd/system/gammu-smsd.service
 
 %files -n libGammu%{so_ver} -f libgammu.lang
 %defattr(-,root,root,-)
 %{_libdir}/libGammu.so.%{so_ver}*
 %{_datadir}/gammu/
+%dir /etc/udev
+%dir /etc/udev/rules.d
 /etc/udev/rules.d/69-gammu-acl.rules
 
 %files -n libgsmsd%{so_ver}

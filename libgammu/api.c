@@ -2,6 +2,7 @@
 
 #include <gammu.h>
 #include "gsmstate.h"
+#include "gsmcomon.h"
 #include "debug.h"
 
 #ifdef __FUNCTION__WORKING
@@ -39,6 +40,12 @@
 	PRINT_FUNCTION_START \
 	if (!GSM_IsConnected(s)) { \
 		return ERR_NOTCONNECTED; \
+	} \
+	if (s->Phone.Functions->PreAPICall != NONEFUNCTION) { \
+		err = s->Phone.Functions->PreAPICall(s); \
+		if (err != ERR_NONE) { \
+			return err; \
+		} \
 	} \
 }
 
@@ -1742,7 +1749,7 @@ GSM_Error GSM_SetFileAttributes(GSM_StateMachine *s, GSM_File *File)
 /**
  * Retrieves file part.
  */
-GSM_Error GSM_GetFilePart(GSM_StateMachine *s, GSM_File *File, int *Handle, int *Size)
+GSM_Error GSM_GetFilePart(GSM_StateMachine *s, GSM_File *File, int *Handle, size_t *Size)
 {
 	GSM_Error err;
 
@@ -1755,7 +1762,7 @@ GSM_Error GSM_GetFilePart(GSM_StateMachine *s, GSM_File *File, int *Handle, int 
 /**
  * Adds file part to filesystem.
  */
-GSM_Error GSM_AddFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int *Handle)
+GSM_Error GSM_AddFilePart(GSM_StateMachine *s, GSM_File *File, size_t *Pos, int *Handle)
 {
 	GSM_Error err;
 
@@ -1768,7 +1775,7 @@ GSM_Error GSM_AddFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int *Ha
 /**
  * Sends file to phone, it's up to phone to decide what to do with it.
  */
-GSM_Error GSM_SendFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int *Handle)
+GSM_Error GSM_SendFilePart(GSM_StateMachine *s, GSM_File *File, size_t *Pos, int *Handle)
 {
 	GSM_Error err;
 

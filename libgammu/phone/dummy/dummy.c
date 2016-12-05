@@ -57,10 +57,11 @@
 #include <dirent.h>
 #endif
 
-GSM_Error DUMMY_Error(GSM_StateMachine *s, const char *message)
+GSM_Error DUMMY_Error(GSM_StateMachine *s, const char *message, const char *path)
 {
 	int tmp_errno;
 	tmp_errno = errno;
+	smprintf(s, "Filesystem path: %s\n", path);
 	GSM_OSErrorInfo(s, message);
 	if (tmp_errno == ENOENT) {
 		return ERR_EMPTY;
@@ -533,7 +534,7 @@ GSM_Error DUMMY_DeleteSMS(GSM_StateMachine *s, GSM_SMSMessage *sms)
 	if (unlink(filename) == 0) {
 		error = ERR_NONE;
 	} else {
-		error = DUMMY_Error(s, "SMS unlink failed");
+		error = DUMMY_Error(s, "SMS unlink failed", filename);
 	}
 	free(filename);
 	filename=NULL;
@@ -994,7 +995,7 @@ GSM_Error DUMMY_DeleteAlarm(GSM_StateMachine *s, GSM_Alarm *entry)
 	if (unlink(filename) == 0) {
 		error = ERR_NONE;
 	} else {
-		error = DUMMY_Error(s, "calendar unlink failed");
+		error = DUMMY_Error(s, "calendar unlink failed", filename);
 	}
 
 	free(filename);
@@ -1068,11 +1069,11 @@ GSM_Error DUMMY_GetWAPBookmark(GSM_StateMachine *s, GSM_WAPBookmark *bookmark)
 {
 	switch (bookmark->Location) {
 		case 1:
-			EncodeUnicode(bookmark->Address, "http://blog.cihar.com/", 22);
+			EncodeUnicode(bookmark->Address, "https://blog.cihar.com/", 23);
 			EncodeUnicode(bookmark->Title, "Michals weblog", 14);
 			return ERR_NONE;
 		case 2:
-			EncodeUnicode(bookmark->Address, "http://wammu.eu/", 16);
+			EncodeUnicode(bookmark->Address, "https://wammu.eu/", 17);
 			EncodeUnicode(bookmark->Title, "Wammu website", 13);
 			return ERR_NONE;
 		default:
@@ -1097,7 +1098,7 @@ GSM_Error DUMMY_SetFileAttributes(GSM_StateMachine *s, GSM_File *File)
 	return ERR_NONE;
 }
 
-GSM_Error DUMMY_AddFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int *Handle)
+GSM_Error DUMMY_AddFilePart(GSM_StateMachine *s, GSM_File *File, size_t *Pos, int *Handle)
 {
 	char *path;
 	FILE *file;
@@ -1118,21 +1119,21 @@ GSM_Error DUMMY_AddFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int *
 
 	file = fopen(path, "w");
 	if (file == NULL) {
+		error = DUMMY_Error(s, "fopen(w) failed", path);
 		free(path);
-		error = DUMMY_Error(s, "fopen(w) failed");
 		if (error == ERR_EMPTY) return ERR_PERMISSION;
 		return error;
 	}
 	if (fwrite(File->Buffer, 1, File->Used, file) != File->Used) {
+		error = DUMMY_Error(s, "fwrite failed", path);
 		free(path);
-		error = DUMMY_Error(s, "fwrite failed");
 		fclose(file);
 		if (error == ERR_EMPTY) return ERR_PERMISSION;
 		return error;
 	}
 	if (fclose(file) != 0) {
+		error = DUMMY_Error(s, "fclose failed", path);
 		free(path);
-		error = DUMMY_Error(s, "fclose failed");
 		if (error == ERR_EMPTY) return ERR_PERMISSION;
 		return error;
 	}
@@ -1144,13 +1145,13 @@ GSM_Error DUMMY_AddFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int *
 	return ERR_EMPTY;
 }
 
-GSM_Error DUMMY_SendFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int *Handle)
+GSM_Error DUMMY_SendFilePart(GSM_StateMachine *s, GSM_File *File, size_t *Pos, int *Handle)
 {
 	EncodeUnicode(File->ID_FullName, "incoming/", 9);
 	return DUMMY_AddFilePart(s, File, Pos, Handle);
 }
 
-GSM_Error DUMMY_GetFilePart(GSM_StateMachine *s, GSM_File *File, int *Handle, int *Size)
+GSM_Error DUMMY_GetFilePart(GSM_StateMachine *s, GSM_File *File, int *Handle, size_t *Size)
 {
 	char *path, *name, *pos;
 	GSM_Error error;
@@ -1179,6 +1180,7 @@ GSM_Error DUMMY_GetFilePart(GSM_StateMachine *s, GSM_File *File, int *Handle, in
 GSM_Error DUMMY_GetFolderListing(GSM_StateMachine *s, GSM_File *File, gboolean start)
 {
 	GSM_Phone_DUMMYData	*Priv = &s->Phone.Data.Priv.DUMMY;
+	GSM_Error error;
 	char *path;
 	struct dirent *dp;
 	struct stat sb;
@@ -1191,12 +1193,15 @@ GSM_Error DUMMY_GetFolderListing(GSM_StateMachine *s, GSM_File *File, gboolean s
 		smprintf(s, "listing %s\n", path);
 		strcpy(Priv->dirnames[DUMMY_MAX_FS_DEPTH], path);
 		Priv->dir[DUMMY_MAX_FS_DEPTH] = opendir(path);
-		free(path);
-		path=NULL;
 
 		if (Priv->dir[DUMMY_MAX_FS_DEPTH] == NULL) {
-			return DUMMY_Error(s, "opendir failed");
+			error = DUMMY_Error(s, "opendir failed", path);
+			free(path);
+			path=NULL;
+			return error;
 		}
+		free(path);
+		path=NULL;
 	}
 
 read_next_entry:
@@ -1214,9 +1219,10 @@ read_next_entry:
 	/* Stat file */
 	path = DUMMY_GetFSPath(s, dp->d_name, DUMMY_MAX_FS_DEPTH);
 	if (stat(path, &sb) < 0) {
+		error = DUMMY_Error(s, "stat failed", path);
 		free(path);
 		path=NULL;
-		return DUMMY_Error(s, "stat failed");
+		return error;
 	}
 
 	/* Fill file structure */
@@ -1247,9 +1253,10 @@ read_next_entry:
 		Priv->fs_depth++;
 		Priv->dir[Priv->fs_depth] = opendir(path);
 		if (Priv->dir[Priv->fs_depth] == NULL) {
+			error = DUMMY_Error(s, "nested opendir failed", path);
 			free(path);
 			path=NULL;
-			return DUMMY_Error(s, "nested opendir failed");
+			return error;
 		}
 		strcpy(Priv->dirnames[Priv->fs_depth], path);
 	}
@@ -1261,6 +1268,7 @@ read_next_entry:
 GSM_Error DUMMY_GetNextFileFolder(GSM_StateMachine *s, GSM_File *File, gboolean start)
 {
 	GSM_Phone_DUMMYData	*Priv = &s->Phone.Data.Priv.DUMMY;
+	GSM_Error error;
 	char *path;
 	struct dirent *dp;
 	struct stat sb;
@@ -1276,12 +1284,15 @@ GSM_Error DUMMY_GetNextFileFolder(GSM_StateMachine *s, GSM_File *File, gboolean 
 		path = DUMMY_GetFilePath(s, "fs");
 		strcpy(Priv->dirnames[0], path);
 		Priv->dir[0] = opendir(path);
-		free(path);
-		path=NULL;
 
 		if (Priv->dir[0] == NULL) {
-			return DUMMY_Error(s, "opendir failed");
+			error = DUMMY_Error(s, "opendir failed", path);
+			free(path);
+			path = NULL;
+			return error;
 		}
+		free(path);
+		path=NULL;
 		Priv->fs_depth = 0;
 	}
 
@@ -1302,9 +1313,10 @@ read_next_entry:
 	/* Stat file */
 	path = DUMMY_GetFSPath(s, dp->d_name, Priv->fs_depth);
 	if (stat(path, &sb) < 0) {
+		error = DUMMY_Error(s, "stat failed", path);
 		free(path);
-		path=NULL;
-		return DUMMY_Error(s, "stat failed");
+		path = NULL;
+		return error;
 	}
 
 	/* Fill file structure */
@@ -1335,9 +1347,10 @@ read_next_entry:
 		Priv->fs_depth++;
 		Priv->dir[Priv->fs_depth] = opendir(path);
 		if (Priv->dir[Priv->fs_depth] == NULL) {
+			error = DUMMY_Error(s, "nested opendir failed", path);
 			free(path);
 			path=NULL;
-			return DUMMY_Error(s, "nested opendir failed");
+			return error;
 		}
 		strcpy(Priv->dirnames[Priv->fs_depth], path);
 	}
@@ -1353,9 +1366,9 @@ GSM_Error DUMMY_DeleteFile(GSM_StateMachine *s, unsigned char *ID)
 
 	path = DUMMY_GetFSFilePath(s, ID);
 	if (unlink(path) != 0) {
+		error = DUMMY_Error(s, "unlink failed", path);
 		free(path);
-		path=NULL;
-		error = DUMMY_Error(s, "unlink failed");
+		path = NULL;
 		if (error == ERR_EMPTY) return ERR_FILENOTEXIST;
 		return error;
 	}
@@ -1372,9 +1385,9 @@ GSM_Error DUMMY_DeleteFolder(GSM_StateMachine *s, unsigned char *ID)
 	path = DUMMY_GetFSFilePath(s, ID);
 	smprintf(s, "Deleting directory %s\n", path);
 	if (rmdir(path) != 0) {
+		error = DUMMY_Error(s, "rmdir failed", path);
 		free(path);
-		path=NULL;
-		error = DUMMY_Error(s, "rmdir failed");
+		path = NULL;
 		if (error == ERR_EMPTY) return ERR_FILENOTEXIST;
 		return error;
 	}
@@ -1387,6 +1400,7 @@ GSM_Error DUMMY_AddFolder(GSM_StateMachine *s, GSM_File *File)
 {
 	char *path;
 	size_t pos;
+	GSM_Error error;
 
 	pos = UnicodeLength(File->ID_FullName);
 	if (pos > 0 && (File->ID_FullName[2*pos - 2] != 0 || File->ID_FullName[2*pos - 1] != '/')) {
@@ -1398,9 +1412,10 @@ GSM_Error DUMMY_AddFolder(GSM_StateMachine *s, GSM_File *File)
 
 	path = DUMMY_GetFSFilePath(s, File->ID_FullName);
 	if (MKDIR(path) != 0) {
+		error = DUMMY_Error(s, "mkdir failed", path);
 		free(path);
 		path=NULL;
-		return DUMMY_Error(s, "mkdir failed");
+		return error;
 	}
 	free(path);
 	path=NULL;
@@ -1492,7 +1507,7 @@ GSM_Error DUMMY_DeleteMemory(GSM_StateMachine *s, GSM_MemoryEntry *entry)
 	if (unlink(filename) == 0) {
 		error = ERR_NONE;
 	} else {
-		error = DUMMY_Error(s, "memory unlink failed");
+		error = DUMMY_Error(s, "memory unlink failed", filename);
 	}
 
 	free(filename);
@@ -1603,7 +1618,7 @@ GSM_Error DUMMY_DeleteToDo(GSM_StateMachine *s, GSM_ToDoEntry *entry)
 	if (unlink(filename) == 0) {
 		error = ERR_NONE;
 	} else {
-		error = DUMMY_Error(s, "todo unlink failed");
+		error = DUMMY_Error(s, "todo unlink failed", filename);
 	}
 
 	free(filename);
@@ -1707,7 +1722,7 @@ GSM_Error DUMMY_DeleteCalendar(GSM_StateMachine *s, GSM_CalendarEntry *entry)
 	if (unlink(filename) == 0) {
 		error = ERR_NONE;
 	} else {
-		error = DUMMY_Error(s, "calendar unlink failed");
+		error = DUMMY_Error(s, "calendar unlink failed", filename);
 	}
 
 	free(filename);
@@ -1823,7 +1838,7 @@ GSM_Error DUMMY_DeleteNote(GSM_StateMachine *s, GSM_NoteEntry *entry)
 	if (unlink(filename) == 0) {
 		error = ERR_NONE;
 	} else {
-		error = DUMMY_Error(s, "note unlink failed");
+		error = DUMMY_Error(s, "note unlink failed", filename);
 	}
 	free(filename);
 	filename=NULL;
@@ -1904,6 +1919,40 @@ GSM_Error DUMMY_GetBatteryCharge(GSM_StateMachine *s, GSM_BatteryCharge *bat)
 	bat->BatteryCapacity = 2000;
 	bat->BatteryType = GSM_BatteryLiPol;
 	return ERR_NONE;
+}
+
+GSM_Error DUMMY_PreAPICall(GSM_StateMachine *s)
+{
+	char *path;
+	struct stat sb;
+	GSM_Error error = ERR_NONE;
+	GSM_Call 		call;
+
+	/* Check for incoming call trigger */
+	if (s->Phone.Data.EnableIncomingCall && s->User.IncomingCall != NULL) {
+		path = DUMMY_GetFilePath(s, "incoming-call");
+		if (path == NULL) {
+			return ERR_MOREMEMORY;
+		}
+		if (stat(path, &sb) == 0) {
+			smprintf(s, "Incoming call!\n");
+
+			memset(&call, 0, sizeof(call));
+
+			call.Status 		= 0;
+			call.StatusCode		= 0;
+			call.CallIDAvailable 	= FALSE;
+			call.Status = GSM_CALL_IncomingCall;
+			call.CallIDAvailable 	= TRUE;
+			EncodeUnicode(call.PhoneNumber, "+800123456", 11);
+
+			s->User.IncomingCall(s, &call, s->User.IncomingCallUserData);
+
+			unlink(path);
+		}
+		free(path);
+	}
+	return error;
 }
 
 /*@}*/
@@ -2053,7 +2102,8 @@ GSM_Phone_Functions DUMMYPhone = {
 	NOTSUPPORTED,			/* 	SetGPRSAccessPoint	*/
 	NOTSUPPORTED,			/* 	GetScreenshot		*/
 	NOTSUPPORTED,			/* 	SetPower		*/
-	NOTSUPPORTED			/* 	PostConnect	*/
+	NOTSUPPORTED,			/* 	PostConnect	*/
+	DUMMY_PreAPICall
 };
 
 /*@}*/

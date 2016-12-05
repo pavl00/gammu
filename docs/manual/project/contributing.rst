@@ -5,7 +5,7 @@ We welcome contribution in any area, if you don't have developer skills, you
 can always contribute to :doc:`localization` or just `donate us money`_. In case you are
 interested in fixing some code, please read :doc:`../internal/index` to
 understand structure of Gammu code. We also maintain list of
-`wanted skills <http://wammu.eu/contribute/wanted/>`_ where you can find in
+`wanted skills <https://wammu.eu/contribute/wanted/>`_ where you can find in
 which areas we currently mostly lack manpower.
 
 Sending patches
@@ -15,7 +15,7 @@ As we use `Git <http://git-scm.com/>`_ for development, the preferred way to
 get patches is in form which can be directly applied to Git. So start with
 cloning our Git repository::
 
-    git clone git://github.com/gammu/gammu.git gammu
+    git clone https://github.com/gammu/gammu.git gammu
 
 Once you have done that, do some fixes and commit them (see
 `Git tutorial <http://www.kernel.org/pub/software/scm/git/docs/gittutorial.html>`_
@@ -49,4 +49,4 @@ To manually create patch you can use following steps:
 5. Call ``diff -rup -X .git gammu work > patchfile``.
 6. Send ``patchfile`` to us (you can use bug tracker or mailing list).
 
-.. _donate us money: http://wammu.eu/donate/
+.. _donate us money: https://wammu.eu/donate/

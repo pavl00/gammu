@@ -46,15 +46,15 @@ static GSM_Error PrintFileSystemStatus(void)
 	printf("\n");
 
 	printf(LISTFORMAT, _("Phone memory"));
-	printf(_("%i bytes (free %i bytes, used %i bytes)"),
-	       Status.Free + Status.Used, Status.Free, Status.Used);
+	printf(_("%ld bytes (free %ld bytes, used %ld bytes)"),
+	       (long)(Status.Free + Status.Used), (long)(Status.Free), (long)(Status.Used));
 	printf("\n");
 
 	if (Status.UsedImages != 0 || Status.UsedSounds != 0
 	    || Status.UsedThemes != 0) {
 		printf(LISTFORMAT, _("Usage details"));
-		printf(_("images: %i, sounds: %i, themes: %i"),
-		       Status.UsedImages, Status.UsedSounds, Status.UsedThemes);
+		printf(_("images: %ld, sounds: %ld, themes: %ld"),
+		       (long)(Status.UsedImages), (long)(Status.UsedSounds), (long)(Status.UsedThemes));
 		printf("\n");
 	}
 
@@ -105,7 +105,7 @@ void GetFileSystem(int argc, char *argv[])
 			}
 		}
 
-		if (argc <= 2 || !strcasecmp(argv[2], "-flatall") == 0) {
+		if (argc <= 2 || strcasecmp(argv[2], "-flatall") != 0) {
 			/* Nokia filesystem 1 */
 			if (UnicodeLength(Files.ID_FullName) != 0 &&
 			    (DecodeUnicodeString(Files.ID_FullName)[0] == 'C' ||
@@ -348,7 +348,8 @@ static void GetOneFile(GSM_File * File, gboolean newtime, int i)
 	gboolean start;
 	unsigned char buffer[5000];
 	struct utimbuf filedate;
-	int Handle, Size, p, q, j, old1;
+	int Handle, p, q, j, old1;
+	size_t Size;
 	time_t t_time1, t_time2;
 	long diff;
 
@@ -578,7 +579,8 @@ void GetFileFolder(int argc, char *argv[])
 void AddOneFile(GSM_File * File, const char *text, const gboolean send)
 {
 	GSM_Error error;
-	int Pos, Handle, i, j, old1;
+	size_t Pos;
+	int Handle, i, j, old1;
 	time_t t_time1, t_time2;
 	GSM_DateTime dt;
 	long diff;

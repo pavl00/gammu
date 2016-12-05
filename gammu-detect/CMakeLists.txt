@@ -16,6 +16,7 @@ if (Glib_FOUND AND GObject_FOUND)
     endif (WIN32)
 
     add_executable(gammu-detect ${DETECT_SRC})
+    add_coverage (gammu-detect)
     target_link_libraries (gammu-detect ${Glib_LIBRARIES} ${GObject_LIBRARIES} libGammu)
     include_directories(${Glib_INCLUDE_DIRS} ${GObject_INCLUDE_DIRS})
     if (GUDEV_FOUND)
@@ -42,6 +43,8 @@ if (Glib_FOUND AND GObject_FOUND)
             RUNTIME DESTINATION "${INSTALL_BIN_DIR}"
             COMPONENT gammu
             )
+
+    add_test(gammu-detect-help "${CMAKE_CURRENT_BINARY_DIR}/gammu-detect${CMAKE_EXECUTABLE_SUFFIX}" --help)
 
 endif (Glib_FOUND AND GObject_FOUND)
 

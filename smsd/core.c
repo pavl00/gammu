@@ -5,6 +5,7 @@
 #include <signal.h>
 #include <time.h>
 #include <assert.h>
+#include <math.h>
 #ifndef WIN32
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -85,12 +86,12 @@ GSM_Error SMSD_CheckDBVersion(GSM_SMSDConfig *Config, int version)
 	if (version < SMSD_DB_VERSION) {
 		SMSD_Log(DEBUG_ERROR, Config, "Database structure is from older Gammu version");
 		SMSD_Log(DEBUG_INFO, Config, "Please update database, you can find SQL scripts in documentation");
-		return ERR_UNKNOWN;
+		return ERR_DB_VERSION;
 	}
 	if (version > SMSD_DB_VERSION) {
 		SMSD_Log(DEBUG_ERROR, Config, "Database structure is from newer Gammu version");
 		SMSD_Log(DEBUG_INFO, Config, "Please update Gammu to use this database");
-		return ERR_UNKNOWN;
+		return ERR_DB_VERSION;
 	}
 	return ERR_NONE;
 }
@@ -204,6 +205,8 @@ void SMSD_Terminate(GSM_SMSDConfig *Config, const char *msg, GSM_Error error, gb
 		SMSD_LogError(DEBUG_ERROR, Config, msg, error);
 	} else if (rc != 0) {
 		SMSD_LogErrno(Config, msg);
+	} else {
+		SMSD_LogError(DEBUG_INFO, Config, msg, error);
 	}
 
 	/* Disconnect from phone */
@@ -351,7 +354,7 @@ void SMSD_Log_Function(const char *text, void *data)
 	newsize = pos + strlen(text) + 1;
 
 	/* Reallocate buffer if needed */
-	if (newsize > Config->gammu_log_buffer_size) {
+	if (newsize > Config->gammu_log_buffer_size || Config->gammu_log_buffer == NULL) {
 		newsize += 50;
 		Config->gammu_log_buffer = realloc(Config->gammu_log_buffer, newsize);
 		if (Config->gammu_log_buffer == NULL) {
@@ -650,6 +653,15 @@ GSM_Error SMSD_ConfigureLogging(GSM_SMSDConfig *Config, gboolean uselog)
 }
 
 /**
+ * Forces using global debug for smsd.
+ */
+void SMSD_EnableGlobalDebug(GSM_SMSDConfig *Config)
+{
+	/* Gammu library wide logging to our log */
+	GSM_SetDebugFunction(SMSD_Log_Function, Config, GSM_GetGlobalDebug());
+}
+
+/**
  * Reads configuration file and feeds it's content into SMSD configuration structure.
  */
 GSM_Error SMSD_ReadConfig(const char *filename, GSM_SMSDConfig *Config, gboolean uselog)
@@ -698,6 +710,10 @@ GSM_Error SMSD_ReadConfig(const char *filename, GSM_SMSDConfig *Config, gboolean
 		fullpath[PATH_MAX] = 0;
 	}
 	Config->shm_key = ftok(fullpath, SMSD_SHM_KEY);
+	if (Config->shm_key < 0) {
+		fprintf(stderr, "Failed to generate SHM key!\n");
+		return FALSE;
+	}
 #endif
 #ifdef WIN32
 	if (filename == NULL) {
@@ -796,6 +812,7 @@ GSM_Error SMSD_ReadConfig(const char *filename, GSM_SMSDConfig *Config, gboolean
 	Config->checksecurity = INI_GetBool(Config->smsdcfgfile, "smsd", "checksecurity", TRUE);
 	Config->hangupcalls = INI_GetBool(Config->smsdcfgfile, "smsd", "hangupcalls", FALSE);
 	Config->checksignal = INI_GetBool(Config->smsdcfgfile, "smsd", "checksignal", TRUE);
+	Config->checknetwork = INI_GetBool(Config->smsdcfgfile, "smsd", "checknetwork", TRUE);
 	Config->checkbattery = INI_GetBool(Config->smsdcfgfile, "smsd", "checkbattery", TRUE);
 	Config->enable_send = INI_GetBool(Config->smsdcfgfile, "smsd", "send", TRUE);
 	Config->enable_receive = INI_GetBool(Config->smsdcfgfile, "smsd", "receive", TRUE);
@@ -811,8 +828,8 @@ GSM_Error SMSD_ReadConfig(const char *filename, GSM_SMSDConfig *Config, gboolean
 
 	SMSD_Log(DEBUG_NOTICE, Config, "CommTimeout=%i, SendTimeout=%i, ReceiveFrequency=%i, ResetFrequency=%i, HardResetFrequency=%i",
 			Config->commtimeout, Config->sendtimeout, Config->receivefrequency, Config->resetfrequency, Config->hardresetfrequency);
-	SMSD_Log(DEBUG_NOTICE, Config, "checks: CheckSecurity=%d, CheckBattery=%d, CheckSignal=%d",
-			Config->checksecurity, Config->checkbattery, Config->checksignal);
+	SMSD_Log(DEBUG_NOTICE, Config, "checks: CheckSecurity=%d, CheckBattery=%d, CheckSignal=%d, CheckNetwork=%d",
+			Config->checksecurity, Config->checkbattery, Config->checksignal, Config->checknetwork);
 	SMSD_Log(DEBUG_NOTICE, Config, "mode: Send=%d, Receive=%d",
 			Config->enable_send, Config->enable_receive);
 
@@ -988,7 +1005,7 @@ gboolean SMSD_CheckSecurity(GSM_SMSDConfig *Config)
 char *SMSD_RunOnCommand(const char *locations, const char *command)
 {
 	char *result;
-	int len;
+	size_t len;
 
 	assert(command != NULL);
 
@@ -1154,7 +1171,9 @@ gboolean SMSD_RunOn(const char *command, GSM_MultiSMSMessage *sms, GSM_SMSDConfi
 
 		/* Close write end of pipe */
 		close(pipefd[1]);
-		fcntl(pipefd[0], F_SETFL, O_NONBLOCK);
+		if (fcntl(pipefd[0], F_SETFL, O_NONBLOCK) != 0) {
+			SMSD_Log(DEBUG_ERROR, Config, "Failed to set nonblocking pipe to child!");
+		}
 
 		i = 0;
 		do {
@@ -1518,13 +1537,10 @@ gboolean SMSD_ReadDeleteSMS(GSM_SMSDConfig *Config)
 		for (j = 0; j < SortedSMS[i]->Number; j++) {
 			SortedSMS[i]->SMS[j].Folder = 0;
 			error = GSM_DeleteSMS(Config->gsm, &SortedSMS[i]->SMS[j]);
-			switch (error) {
-				case ERR_NONE:
-				case ERR_EMPTY:
-					break;
-				default:
-					SMSD_LogError(DEBUG_INFO, Config, "Error deleting SMS", error);
-					return FALSE;
+			// Empty error can happen if deleting message several times
+			if (error != ERR_NONE && error != ERR_EMPTY) {
+				SMSD_LogError(DEBUG_INFO, Config, "Error deleting SMS", error);
+				return FALSE;
 			}
 		}
 
@@ -1595,6 +1611,18 @@ void SMSD_PhoneStatus(GSM_SMSDConfig *Config) {
 	if (error != ERR_NONE) {
 		memset(&(Config->Status->Network), 0, sizeof(Config->Status->Network));
 	}
+	if (Config->checknetwork) {
+		error = GSM_GetNetworkInfo(Config->gsm, &Config->Status->NetInfo);
+	} else {
+		error = ERR_UNKNOWN;
+	}
+	if (error != ERR_NONE) {
+		memset(&(Config->Status->NetInfo), 0, sizeof(Config->Status->NetInfo));
+	} else if (error == ERR_NONE) {
+		if (Config->Status->NetInfo.State == GSM_NoNetwork) {
+			GSM_SetPower(Config->gsm, TRUE);
+		}
+	}
 }
 
 /**
@@ -1648,31 +1676,35 @@ GSM_Error SMSD_SendSMS(GSM_SMSDConfig *Config)
 	}
 
 	for (i = 0; i < sms.Number; i++) {
+		/* No SMSC set in message */
 		if (sms.SMS[i].SMSC.Location == 0 && UnicodeLength(sms.SMS[i].SMSC.Number) == 0 && Config->SMSC.Location == 0) {
 			SMSD_Log(DEBUG_INFO, Config, "Message without SMSC, using configured one");
-			memcpy(&sms.SMS[i].SMSC,&Config->SMSC,sizeof(GSM_SMSC));
-			sms.SMS[i].SMSC.Location = 0;
+			sms.SMS[i].SMSC = Config->SMSC;
 			if (Config->relativevalidity != -1) {
 				sms.SMS[i].SMSC.Validity.Format	  = SMS_Validity_RelativeFormat;
 				sms.SMS[i].SMSC.Validity.Relative = Config->relativevalidity;
 			}
 
 		}
+		/* Still nothing set after using configured one */
 		if (sms.SMS[i].SMSC.Location == 0 && UnicodeLength(sms.SMS[i].SMSC.Number) == 0) {
 			SMSD_Log(DEBUG_INFO, Config, "Message without SMSC, assuming you want to use the one from phone");
 			sms.SMS[i].SMSC.Location = 1;
 		}
+		/* Should use SMSC from phone */
 		if (sms.SMS[i].SMSC.Location != 0) {
+			/* Do we have cached entry? */
 			if (Config->SMSCCache.Location != sms.SMS[i].SMSC.Location) {
 				Config->SMSCCache.Location = sms.SMS[i].SMSC.Location;
-				error = GSM_GetSMSC(Config->gsm,&Config->SMSCCache);
+				error = GSM_GetSMSC(Config->gsm, &Config->SMSCCache);
 				if (error!=ERR_NONE) {
 					SMSD_Log(DEBUG_ERROR, Config, "Error getting SMSC from phone");
 					return ERR_UNKNOWN;
 				}
 
 			}
-			memcpy(&sms.SMS[i].SMSC,&Config->SMSCCache,sizeof(GSM_SMSC));
+			sms.SMS[i].SMSC = Config->SMSCCache;
+			/* Reset location to avoid reading from phone */
 			sms.SMS[i].SMSC.Location = 0;
 			if (Config->relativevalidity != -1) {
 				sms.SMS[i].SMSC.Validity.Format	  = SMS_Validity_RelativeFormat;
@@ -1725,6 +1757,7 @@ GSM_Error SMSD_SendSMS(GSM_SMSDConfig *Config)
 		Config->Status->Sent++;
 		error = Config->Service->AddSentSMSInfo(&sms, Config, Config->SMSID, i+1, SMSD_SEND_OK, Config->TPMR);
 		if (error != ERR_NONE) {
+			SMSD_LogError(DEBUG_INFO, Config, "Error setting sent status", error);
 			goto failure_sent;
 		}
 	}
@@ -1748,7 +1781,7 @@ failure_unsent:
 
 	Config->Service->UpdateRetries(Config, Config->SMSID);
 
-       sleep(60);
+	sleep(60);
 	return ERR_UNKNOWN;
 failure_sent:
 
@@ -1829,17 +1862,20 @@ GSM_Error SMSD_InitSharedMemory(GSM_SMSDConfig *Config, gboolean writable)
 	/* Initial shared memory content */
 	if (writable) {
 		Config->Status->Version = SMSD_SHM_VERSION;
-		strcpy(Config->Status->PhoneID, Config->PhoneID);
+		strncpy(Config->Status->PhoneID, Config->PhoneID, sizeof(Config->Status->PhoneID));
+		Config->Status->PhoneID[sizeof(Config->Status->PhoneID) - 1] = 0;
 		sprintf(Config->Status->Client, "Gammu %s on %s compiler %s",
 			GAMMU_VERSION,
 			GetOS(),
 			GetCompiler());
 		memset(&Config->Status->Charge, 0, sizeof(GSM_BatteryCharge));
 		memset(&Config->Status->Network, 0, sizeof(GSM_SignalQuality));
+		memset(&Config->Status->NetInfo, 0, sizeof(GSM_NetworkInfo));
 		Config->Status->Received = 0;
 		Config->Status->Failed = 0;
 		Config->Status->Sent = 0;
 		Config->Status->IMEI[0] = 0;
+		Config->Status->IMSI[0] = 0;
 	}
 	return ERR_NONE;
 }
@@ -1903,6 +1939,7 @@ GSM_Error SMSD_MainLoop(GSM_SMSDConfig *Config, gboolean exit_on_failure, int ma
 {
 	GSM_Error		error;
 	int                     errors = -1, initerrors=0;
+	unsigned int		lastsleep;
  	time_t			lastreceive = 0, lastreset = time(NULL), lasthardreset = time(NULL), lastnothingsent = 0, laststatus = 0;
 	time_t			lastloop = 0, current_time;
 	int i;
@@ -1943,11 +1980,11 @@ GSM_Error SMSD_MainLoop(GSM_SMSDConfig *Config, gboolean exit_on_failure, int ma
 			/* Did we reach limit for errors? */
 			if (max_failures != 0 && initerrors > max_failures) {
 				Config->failure = ERR_TIMEOUT;
-				SMSD_Log(DEBUG_INFO, Config, "Reached maximal number of failures (%d), terminating", max_failures);
+				SMSD_Log(DEBUG_INFO, Config, "Reached maximum number of failures (%d), terminating", max_failures);
 				break;
 			}
 			if (initerrors++ > 3) {
-				SMSD_Log(DEBUG_INFO, Config, "Going to 30 seconds sleep because of too much connection errors");
+				SMSD_Log(DEBUG_INFO, Config, "Going to 30 seconds sleep because of too many connection errors");
 
 				for (i = 0; i < 60; i++) {
 					if (Config->shutdown)
@@ -1975,10 +2012,13 @@ GSM_Error SMSD_MainLoop(GSM_SMSDConfig *Config, gboolean exit_on_failure, int ma
 					GSM_SetIncomingCall(Config->gsm, TRUE);
 				}
 
+				/* We use polling so store messages to SIM */
+				GSM_SetIncomingSMS(Config->gsm, TRUE);
+
 				GSM_SetSendSMSStatusCallback(Config->gsm, SMSD_SendSMSStatusCallback, Config);
 				/* On first start we need to initialize some variables */
 				if (first_start) {
-					if (GSM_GetIMEI(Config->gsm, Config->Status->IMEI) != ERR_NONE) {
+					if (GSM_GetIMEI(Config->gsm, Config->Status->IMEI) != ERR_NONE || GSM_GetSIMIMSI(Config->gsm, Config->Status->IMSI) != ERR_NONE) {
 						errors++;
 					} else {
 						errors = 0;
@@ -2104,10 +2144,11 @@ GSM_Error SMSD_MainLoop(GSM_SMSDConfig *Config, gboolean exit_on_failure, int ma
 
 		/* Sleep some time before another loop */
 		current_time = time(NULL);
+		lastsleep = round(difftime(current_time, lastloop));
 		if (Config->loopsleep == 1) {
 			sleep(1);
-		} else if (difftime(current_time, lastloop) < Config->loopsleep) {
-			sleep(Config->loopsleep - difftime(current_time, lastloop));
+		} else if (lastsleep < Config->loopsleep) {
+			sleep(Config->loopsleep - lastsleep);
 		}
 	}
 	Config->Service->Free(Config);
@@ -2128,7 +2169,7 @@ done:
 /**
  * Function to inject message to service backend.
  */
-GSM_Error SMSD_InjectSMS(GSM_SMSDConfig		*Config, GSM_MultiSMSMessage *sms, char *NewID)
+GSM_Error SMSD_InjectSMS(GSM_SMSDConfig *Config, GSM_MultiSMSMessage *sms, char *NewID)
 {
 	GSM_Error error;
 

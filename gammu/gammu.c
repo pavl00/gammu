@@ -53,7 +53,7 @@
 
 #define ALL_MEMORY_TYPES "DC|MC|RC|ON|VM|SM|ME|MT|FD|SL"
 
-#define RSS_URL "http://wammu.eu/news/rss/"
+#define RSS_URL "https://wammu.eu/news/rss/"
 #define RSS_STABLE_STRING "Gammu stable version "
 #define RSS_TESTING_STRING "Gammu test version "
 
@@ -164,6 +164,9 @@ static void Features(int argc UNUSED, char *argv[]UNUSED)
 #endif
 #ifdef LIBUSB_FOUND
 	printf("  - %s\n", "FBUSUSB");
+#endif
+#ifdef GSM_ENABLE_PROXY
+	printf("  - %s\n", "PROXY");
 #endif
 
 	printf(" * %s\n", _("Phones"));
@@ -326,7 +329,7 @@ static void Version(int argc UNUSED, char *argv[]UNUSED)
 {
 	PrintVersion();
 
-	printf("%s\n", _("Copyright (C) 2003 - 2015 Michal Cihar <michal@cihar.com> and other authors."));
+	printf("%s\n", _("Copyright (C) 2003 - 2016 Michal Cihar <michal@cihar.com> and other authors."));
 
 	printf("\n");
 
@@ -338,7 +341,7 @@ static void Version(int argc UNUSED, char *argv[]UNUSED)
 
 	printf("\n");
 
-	printf("%s\n", _("Check <http://wammu.eu/gammu/> for updates."));
+	printf("%s\n", _("Check <https://wammu.eu/gammu/> for updates."));
 
 	printf("\n");
 }
@@ -506,7 +509,6 @@ static GSM_Parameters Parameters[] = {
 	{"features",			0, 0, Features,			{H_Gammu,0},			""},
 	{"checkversion",		0, 1, CheckVersion,		{H_Gammu,0},			"[STABLE]"},
 	{"getdisplaystatus",		0, 0, GetDisplayStatus,		{H_Info,0},			""},
-	{"getlocation",			0, 0, GetLocation,		{H_Info,0},			""},
 	{"monitor",			0, 1, Monitor,			{H_Info,H_Network,H_Call,0},	"[times]"},
 	{"battery",			0, 0, Battery,			{H_Info,0},			""},
 	{"setautonetworklogin",	0, 0, SetAutoNetworkLogin,	{H_Network,0},			""},
@@ -1238,7 +1240,7 @@ int main(int argc, char *argv[])
 	}
 
 	/* Check used version vs. compiled */
-	if (!strcasecmp(GetGammuVersion(), GAMMU_VERSION) == 0) {
+	if (strcasecmp(GetGammuVersion(), GAMMU_VERSION) != 0) {
 		printf_err(_("Version of installed libGammu.so (%s) is different to version of Gammu (%s)\n"),
 			   GetGammuVersion(), GAMMU_VERSION);
 		Terminate(98);

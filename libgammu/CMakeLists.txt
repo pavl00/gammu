@@ -4,7 +4,7 @@
 
 project (libGammu C)
 
-include(GammuTuneCompiler)
+include(GammuTuneFlags)
 
 set (LIBRARY_SRC
     gsmcomon.c
@@ -33,7 +33,7 @@ set (LIBRARY_SRC
     service/backup/backvcf.c
     service/backup/backics.c
     service/backup/backvnt.c
-    device/bluetoth/bluetoth.c
+    device/bluetooth/bluetooth.c
     device/irda/irda.c
     device/usb/usb.c
     device/devfunc.c
@@ -84,20 +84,20 @@ if (WITH_BACKUP)
     list (APPEND LIBRARY_SRC phone/dummy/dummy.c)
 endif (WITH_BACKUP)
 if (BLUEZ_FOUND)
-    list (APPEND LIBRARY_SRC device/bluetoth/bluez.c)
+    list (APPEND LIBRARY_SRC device/bluetooth/bluez.c)
 endif (BLUEZ_FOUND)
 if (BSD_BLUE_FOUND)
-    list (APPEND LIBRARY_SRC device/bluetoth/blue_bsd.c)
+    list (APPEND LIBRARY_SRC device/bluetooth/blue_bsd.c)
 endif (BSD_BLUE_FOUND)
 if (OSX_BLUE_FOUND)
-    list (APPEND LIBRARY_SRC device/bluetoth/blue_osx.c)
+    list (APPEND LIBRARY_SRC device/bluetooth/blue_osx.c)
 endif (OSX_BLUE_FOUND)
 if (WIN32 AND NOT CYGWIN)
-    list (APPEND LIBRARY_SRC device/bluetoth/blue_w32.c)
+    list (APPEND LIBRARY_SRC device/bluetooth/blue_w32.c)
 endif (WIN32 AND NOT CYGWIN)
-if (NOT WIN32 AND HAVE_PTHREAD)
+if (NOT WIN32 AND HAVE_PTHREAD AND HAVE_SIGTIMEDWAIT)
     list (APPEND LIBRARY_SRC device/proxy/proxy.c)
-endif (NOT WIN32 AND HAVE_PTHREAD)
+endif (NOT WIN32 AND HAVE_PTHREAD AND HAVE_SIGTIMEDWAIT)
 
 if (CYGWIN OR NOT WIN32 AND NOT DJGPP)
     list (APPEND LIBRARY_SRC device/serial/ser_unx.c)
@@ -115,13 +115,12 @@ if(MSVC)
 else(MSVC)
     add_library (libGammu ${LIBRARY_SRC})
 endif(MSVC)
+add_coverage (libGammu)
 set_target_properties (libGammu PROPERTIES
     VERSION ${GAMMU_SOVERSION}.${GAMMU_VERSION}
     SOVERSION ${GAMMU_SOVERSION}
     OUTPUT_NAME Gammu)
-if (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_COMPILER_IS_MINGW AND NOT CMAKE_COMPILER_IS_CYGWIN)
-    set_target_properties (libGammu PROPERTIES COMPILE_FLAGS -fPIC)
-endif (CMAKE_COMPILER_IS_GNUCC AND NOT CMAKE_COMPILER_IS_MINGW AND NOT CMAKE_COMPILER_IS_CYGWIN)
+GAMMU_TUNE_SHARED(libGammu)
 if(CMAKE_COMPILER_IS_MINGW AND BUILD_SHARED_LIBS)
     SET_TARGET_PROPERTIES(libGammu PROPERTIES LINK_FLAGS
         "-Wl,--output-def,${CMAKE_CURRENT_BINARY_DIR}/libGammu.def")

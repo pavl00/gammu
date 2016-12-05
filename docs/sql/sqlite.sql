@@ -1,13 +1,8 @@
-CREATE TABLE daemons (
-  Start TEXT NOT NULL,
-  Info TEXT NOT NULL
-);
-
 CREATE TABLE gammu (
-  Version INTEGER NOT NULL DEFAULT '0'
+  Version INTEGER NOT NULL DEFAULT '0' PRIMARY KEY
 );
 
-INSERT INTO gammu (Version) VALUES (15);
+INSERT INTO gammu (Version) VALUES (16);
 
 CREATE TABLE inbox (
   UpdatedInDB NUMERIC NOT NULL DEFAULT (datetime('now')),
@@ -51,6 +46,7 @@ CREATE TABLE outbox (
   DeliveryReport TEXT DEFAULT 'default',
   CreatorID TEXT NOT NULL,
   Retries INTEGER DEFAULT '0',
+  Priority INTEGER DEFAULT '0',
   CHECK (Coding IN 
   ('Default_No_Compression','Unicode_No_Compression','8bit','Default_Compression','Unicode_Compression')),
   CHECK (DeliveryReport IN ('default','yes','no'))
@@ -77,18 +73,6 @@ CREATE TABLE outbox_multipart (
  PRIMARY KEY (ID, SequencePosition)
 );
 
-CREATE TABLE pbk (
-  ID INTEGER PRIMARY KEY AUTOINCREMENT,
-  GroupID INTEGER NOT NULL DEFAULT '-1',
-  Name TEXT NOT NULL,
-  Number TEXT NOT NULL
-);
-
-CREATE TABLE pbk_groups (
-  Name TEXT NOT NULL,
-  ID INTEGER PRIMARY KEY AUTOINCREMENT
-);
-
 CREATE TABLE phones (
   ID TEXT NOT NULL,
   UpdatedInDB NUMERIC NOT NULL DEFAULT (datetime('now')),
@@ -97,6 +81,7 @@ CREATE TABLE phones (
   Send TEXT NOT NULL DEFAULT 'no',
   Receive TEXT NOT NULL DEFAULT 'no',
   IMEI TEXT PRIMARY KEY NOT NULL,
+  IMSI TEXT NOT NULL,
   NetCode TEXT DEFAULT 'ERROR',
   NetName TEXT DEFAULT 'ERROR',
   Client TEXT NOT NULL,

@@ -30,7 +30,7 @@ You can use :ref:`gammu-config` or :ref:`gammu-detect` to generate
 configuration file or start from :ref:`Fully documented example`.
 
 For hints about configuring your phone, you can check Gammu Phone
-Database <http://wammu.eu/phones/> to see what user users
+Database <https://wammu.eu/phones/> to see what user users
 experienced.
 
 This file use ini file syntax, see :ref:`ini`.
@@ -163,7 +163,7 @@ Device connection parameters
         :samp:`dialout`) or or add special udev rules to enable you access
         these devices as non-root.
 
-        For Nokia phones you can put follofing file (also available in sources
+        For Nokia phones you can put following file (also available in sources
         as :file:`contrib/udev/69-gammu-acl.rules`) as
         :file:`/etc/udev/rules.d/69-gammu-acl.rules`:
 
@@ -405,6 +405,9 @@ bi-directional communication with the phone.
     [gammu]
     device = ssh root@my.router /usr/local/bin/myscript /dev/ttyUSB0
     connection = proxyat
+
+You can find sample script which can be used on the remote side in
+:file:`contrib/proxy/gammu-backend`.
 
 .. _Fully documented example:
 

@@ -159,6 +159,9 @@
 #ifndef HAVE_PTHREAD
 #cmakedefine HAVE_PTHREAD
 #endif
+#ifndef HAVE_SIGTIMEDWAIT
+#cmakedefine HAVE_SIGTIMEDWAIT
+#endif
 #ifndef HAVE_SYS_IOCTL_H
 #cmakedefine HAVE_SYS_IOCTL_H
 #endif
@@ -277,6 +280,10 @@
 #ifndef HAVE_STRTOULL
 #cmakedefine HAVE_STRTOULL
 #endif
+/* Size of wchar_t needs to be 4 bytes to store supplementary plan unicode */
+#if @WCHAR_T@ >= 4
+#cmakedefine USE_WCHAR_T
+#endif
 #ifndef HAVE_WCHAR_T
 #cmakedefine HAVE_WCHAR_T
 #endif
@@ -367,14 +374,6 @@
 /* Enable Glib */
 #cmakedefine Glib_FOUND
 
-/* MS Visual C++ Express 2005 warnings */
-#if _MSC_VER == 1400
-#  pragma warning( disable : 4996 4244 4333)
-#  ifndef _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES
-#    define _CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES  1
-#  endif
-#endif
-
 /* spawnv argument type */
 #cmakedefine SPAWNV_ARGUMENT_IS_CONST
 
@@ -384,13 +383,14 @@
 /* Path where locales will be installed */
 #define GAMMU_DATA_PATH "@CMAKE_INSTALL_PREFIX@/@INSTALL_DATA_DIR@"
 
-/* OpenCellID API key */
-#define OPENCELLID_API_KEY "@OPENCELLID_API_KEY@"
-
 /* Most winapi crap can be used as well from Cygwin */
 #if defined(WIN32) || defined(__CYGWIN__)
 #define HAVE_WINDOWS_SERVICE
 #define HAVE_WINDOWS_EVENT_LOG
+#endif
+
+#if !defined(WIN32) && defined(HAVE_PTHREAD) && defined(HAVE_SIGTIMEDWAIT)
+#define GSM_ENABLE_PROXY
 #endif
 
 #endif

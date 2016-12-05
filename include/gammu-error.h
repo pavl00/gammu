@@ -12,6 +12,10 @@
  * Error handling and manipulation.
  */
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 /**
  * Error types.
  * \ingroup Error
@@ -323,6 +327,30 @@ typedef enum {
 	 * Network error.
 	 */
 	ERR_NETWORK_ERROR,
+	/**
+	 * Invalid database version.
+	 */
+	ERR_DB_VERSION,
+	/**
+	 * Failed to initialize DB driver.
+	 */
+	ERR_DB_DRIVER,
+	/**
+	 * Failed to configure DB driver.
+	 */
+	ERR_DB_CONFIG,
+	/**
+	 * Failed to connect to database.
+	 */
+	ERR_DB_CONNECT,
+	/**
+	 * Database connection timeout.
+	 */
+	ERR_DB_TIMEOUT,
+	/**
+	 * Error in executing SQL query.
+	 */
+	ERR_SQL,
 
 	/**
 	 * Just marker of highest error code, should not be used.
@@ -349,6 +377,9 @@ const char *GSM_ErrorString(GSM_Error e);
  * \ingroup Error
  */
 const char *GSM_ErrorName(GSM_Error e);
+#ifdef	__cplusplus
+}
+#endif
 #endif
 
 /* Editor configuration

@@ -7,6 +7,10 @@
 #ifndef __gammu_unicode_h
 #define __gammu_unicode_h
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 /**
  * \defgroup Unicode Unicode
  * Unicode manipulation functions. Please note that most of functions
@@ -15,10 +19,9 @@
  * \ref GSM_InitLocales.
  */
 
-#include <wchar.h>
-
-#include <gammu-types.h>
 #include <gammu-config.h>
+#include <stdlib.h>
+#include <gammu-types.h>
 
 /**
  * Returns length of unicode string.
@@ -57,7 +60,7 @@ void DecodeUnicode(const unsigned char *src, char *dest);
  *
  * \ingroup Unicode
  */
-void EncodeUnicode(unsigned char *dest, const char *src, int len);
+void EncodeUnicode(unsigned char *dest, const char *src, size_t len);
 
 /**
  * Decodes unicode file data with byte order mark (BOM).
@@ -86,26 +89,20 @@ gboolean EncodeUTF8QuotedPrintable(char *dest, const unsigned char *src);
  * \ingroup Unicode
  */
 void DecodeUTF8QuotedPrintable(unsigned char *dest, const char *src,
-			       int len);
+			       size_t len);
 /**
  * Encodes string to UTF-8.
  *
  * \ingroup Unicode
  */
 int EncodeWithUTF8Alphabet(unsigned long src, unsigned char *ret);
-/**
- * Decodes string from UTF-8.
- *
- * \ingroup Unicode
- */
-int DecodeWithUTF8Alphabet(const unsigned char *src, wchar_t * dest, int len);
 
 /**
  * Decodes string from hex quoted unicode.
  *
  * \ingroup Unicode
  */
-void DecodeHexUnicode(unsigned char *dest, const char *src, size_t len);
+gboolean DecodeHexUnicode(unsigned char *dest, const char *src, size_t len);
 
 /**
  * Encodes string to hex quoted unicode.
@@ -148,24 +145,17 @@ gboolean EncodeUTF8(char *dest, const unsigned char *src);
  *
  * \ingroup Unicode
  */
-void DecodeUTF8(unsigned char *dest, const char *src, int len);
+void DecodeUTF8(unsigned char *dest, const char *src, size_t len);
 
 /**
  * Decode hex encoded binary text.
  *
  * \ingroup Unicode
  */
-gboolean DecodeHexBin(unsigned char *dest, const unsigned char *src, int len);
-
-/**
- * Converts single character from unicode to wchar_t.
- */
-int EncodeWithUnicodeAlphabet(const unsigned char *value, wchar_t *dest);
-
-/**
- * Converts single character from wchar_t to unicode.
- */
-int DecodeWithUnicodeAlphabet(wchar_t value, unsigned char *dest);
+gboolean DecodeHexBin(unsigned char *dest, const unsigned char *src, size_t len);
+#ifdef	__cplusplus
+}
+#endif
 #endif
 
 /* Editor configuration

@@ -149,7 +149,7 @@ int GSM_GetLocalTimezoneOffset() {
 	gmtime_r(&now, &tg);
 	localtime_r(&now, &tl);
 	// Returns offset including daylight saving (found as boolean in tl.tm_isdst).
-	return mktime(&tl) - mktime(&tg);
+	return (int)(mktime(&tl) - mktime(&tg));
 }
 
 void GSM_DateTimeToTimestamp(GSM_DateTime *Date, char *str)
@@ -367,7 +367,7 @@ gboolean CheckTime(GSM_DateTime *date)
 		date->Second <= 59;
 }
 
-int GetLine(FILE *File, char *Line, int count)
+size_t GetLine(FILE *File, char *Line, int count)
 {
 	int num;
 
@@ -398,12 +398,12 @@ void FreeLines(GSM_CutLines *lines)
 	lines->retval = NULL;
 }
 
-void SplitLines(const char *message, const int messagesize, GSM_CutLines *lines,
-	const char *whitespaces, const int spaceslen,
-	const char *quotes, const int quoteslen,
+void SplitLines(const char *message, const size_t messagesize, GSM_CutLines *lines,
+	const char *whitespaces, const size_t spaceslen,
+	const char *quotes, const size_t quoteslen,
 	const gboolean eot)
 {
-	int 	 i=0,number=0,j=0, lastquote = -1;
+	size_t 	 i=0,number=0,j=0, lastquote = 0;
 	gboolean whitespace = TRUE, nowwhite = FALSE, insidequotes = FALSE;
 
 	/* Clean current lines */
@@ -414,9 +414,9 @@ void SplitLines(const char *message, const int messagesize, GSM_CutLines *lines,
 	/* Go through message */
 	for (i = 0; i < messagesize; i++) {
 		/* Reallocate buffer if needed */
-		if (number + 1 >= lines->allocated - 1) {
+		if (number + 2 >= lines->allocated) {
 			lines->allocated += 20;
-			lines->numbers = (int *)realloc(lines->numbers, lines->allocated * sizeof(int));
+			lines->numbers = (size_t *)realloc(lines->numbers, lines->allocated * sizeof(size_t));
 			if (lines->numbers == NULL) {
 				return;
 			}

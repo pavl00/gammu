@@ -1,8 +1,8 @@
-# cmake <http://www.cmake.org> build file for Gammu
-# Copyright (c) 2007 - 2015 Michal Cihar
+# cmake <https://cmake.org/> build file for Gammu
+# Copyright (c) 2007 - 2016 Michal Cihar
 # vim: expandtab sw=4 ts=4 sts=4:
 
-cmake_minimum_required (VERSION 2.8)
+cmake_minimum_required (VERSION 3.0)
 INCLUDE (CMakeForceCompiler)
 
 project (Gammu C)
@@ -28,14 +28,14 @@ if (LARGE_FILES)
 endif (LARGE_FILES)
 
 # Set version
-set (GAMMU_VERSION "1.36.8" CACHE INTERNAL "")
+set (GAMMU_VERSION "1.38.0" CACHE INTERNAL "")
 string (REGEX REPLACE "^([0-9]*)\\.([0-9]*)\\.([0-9]*)$" "\\1" "GAMMU_VERSION_MAJOR" "${GAMMU_VERSION}")
 string (REGEX REPLACE "^([0-9]*)\\.([0-9]*)\\.([0-9]*)$" "\\2" "GAMMU_VERSION_MINOR" "${GAMMU_VERSION}")
 string (REGEX REPLACE "^([0-9]*)\\.([0-9]*)\\.([0-9]*)$" "\\3" "GAMMU_VERSION_PATCH" "${GAMMU_VERSION}")
 math(EXPR GAMMU_VERSION_NUM "${GAMMU_VERSION_MAJOR} * 10000 + ${GAMMU_VERSION_MINOR} * 100 + ${GAMMU_VERSION_PATCH}")
 message (STATUS "Configuring ${CMAKE_PROJECT_NAME} ${GAMMU_VERSION}")
 
-set (GAMMU_SOVERSION "7" CACHE INTERNAL "")
+set (GAMMU_SOVERSION "8" CACHE INTERNAL "")
 
 if ("${CMAKE_CURRENT_BINARY_DIR}" STREQUAL "${CMAKE_CURRENT_SOURCE_DIR}")
     message ("Warning: In tree build is not recommended way to build Gammu.")
@@ -65,10 +65,12 @@ include (MacroOptionalFindPackage)
 include (MacroAddDLL)
 include (MacroGammuOption)
 include (MacroTuneCompiler)
-include (GCoveralls)
 
 # WE use pkgconfig later
 find_package (PkgConfig)
+
+# enable code coverage
+find_package(codecov)
 
 # Standard packages
 macro_optional_find_package (Doxygen)
@@ -105,6 +107,7 @@ check_function_exists (scandir HAVE_SCANDIR)
 check_function_exists (alphasort HAVE_ALPHASORT)
 
 set (ENABLE_GETOPT ON CACHE BOOL "Enable getopt usage")
+set (USE_WCHAR_T ON CACHE BOOL "Use native wchar_t type")
 if (ENABLE_GETOPT)
 check_symbol_exists (getopt "unistd.h" HAVE_GETOPT)
 check_symbol_exists (getopt_long "getopt.h" HAVE_GETOPT_LONG)
@@ -112,6 +115,7 @@ endif (ENABLE_GETOPT)
 check_symbol_exists (daemon "unistd.h" HAVE_DAEMON_UNISTD)
 check_symbol_exists (daemon "stdlib.h" HAVE_DAEMON_STDLIB)
 check_symbol_exists (kill "signal.h" HAVE_KILL)
+check_symbol_exists (sigtimedwait "signal.h" HAVE_SIGTIMEDWAIT)
 check_symbol_exists (getpwnam "pwd.h" HAVE_GETPWNAM)
 check_symbol_exists (getgrnam "grp.h" HAVE_GETGRNAM)
 check_symbol_exists (getpwuid "pwd.h" HAVE_GETPWUID)
@@ -164,8 +168,13 @@ find_program(SH_BIN sh)
 find_program(BASH_BIN bash)
 find_program(SQLITE_BIN sqlite3)
 find_program(SED_BIN sed)
+if (WIN32)
+find_program(MYSQL_BIN mysql $ENV{ProgramFiles}/MySQL/*/bin $ENV{SystemDrive}/MySQL/*/bin "c:/Program Files/MySQL/*/bin")
+find_program(PSQL_BIN psql $ENV{ProgramFiles}/PostgreSQL/*/bin $ENV{SystemDrive}/PostgreSQL/*/bin "c:/Program Files/PostgreSQL/*/bin")
+else()
 find_program(MYSQL_BIN mysql)
 find_program(PSQL_BIN psql)
+endif()
 
 find_package (Threads)
 
@@ -347,10 +356,16 @@ endif (IRDA_FOUND)
 
 if (MYSQL_FOUND)
     set (HAVE_MYSQL_MYSQL_H TRUE)
+    if (WIN32)
+        set(WIN_LIB_MYSQL libmysql.dll)
+    endif ()
 endif (MYSQL_FOUND)
 
 if (POSTGRES_FOUND)
     set (HAVE_POSTGRESQL_LIBPQ_FE_H TRUE)
+    if (WIN32)
+        set(WIN_LIB_PGSQL libpq.dll SSLEAY32.DLL LIBEAY32.DLL LIBINTL-8.DLL)
+    endif ()
 endif (POSTGRES_FOUND)
 
 set (GAMMU_LIBS "")
@@ -401,7 +416,18 @@ endif (POSTGRES_FOUND)
 if(MSVC)
     # MSVC needs different flags at all
     MACRO_TUNE_COMPILER("/W3")
+    # we use old runtime
     add_definitions(-D_CRT_SECURE_NO_WARNINGS=1)
+    # we use strcpy instead of strcpy_s
+    add_definitions(-D_CRT_SECURE_CPP_OVERLOAD_STANDARD_NAMES=1)
+    # we use ansi API for winsock
+    add_definitions(-D_WINSOCK_DEPRECATED_NO_WARNINGS=1)
+    # The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name
+    add_definitions(-D_CRT_NONSTDC_NO_WARNINGS=1)
+
+    # Generate PDB data even for release build
+    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
+    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} /DEBUG /OPT:REF /OPT:ICF")
 endif(MSVC)
 
 if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_MINGW OR
@@ -440,6 +466,12 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_MINGW OR
     # Just silent this for now, too much code to fix here
     MACRO_TUNE_COMPILER("-Wno-pointer-sign")
 
+    MACRO_TUNE_COMPILER("-Wwrite-strings")
+    MACRO_TUNE_COMPILER("-Wredundant-decls")
+    if (DEBUG)
+        MACRO_TUNE_COMPILER("-fstrict-aliasing")
+    endif (DEBUG)
+
     # Check format strings
     MACRO_TUNE_COMPILER("-Wshadow")
     MACRO_TUNE_COMPILER("-Wformat=2")
@@ -450,12 +482,6 @@ if(CMAKE_COMPILER_IS_GNUCC OR CMAKE_COMPILER_IS_MINGW OR
         MACRO_TUNE_COMPILER("-Wno-format-nonliteral")
         MACRO_TUNE_COMPILER("-Wno-format-security")
     endif (WIN32 AND NOT CYGWIN)
-
-    # Enable coverage if requested
-    if (COVERAGE)
-        ENABLE_GCOVERALLS()
-        MACRO_TUNE_COMPILER_LINKER("--coverage")
-    endif (COVERAGE)
 
     # This is extremely noisy, use only in debug builds
     if (DEBUG)
@@ -525,7 +551,6 @@ if(BORLAND)
     MACRO_TUNE_COMPILER("-wuse")
 endif(BORLAND)
 
-
 # Define required libraries for gammu library if it is static
 if (BUILD_SHARED_LIBS)
     set (GAMMU_PRIVATE_LIBS "" CACHE INTERNAL "Private libraries for gammu library")
@@ -542,10 +567,6 @@ set (DOCS
     ChangeLog
     COPYING
     )
-
-# OpenCellID API key
-set (OPENCELLID_API_KEY "2623b0e70e9fa77754a3db53f3cb6458" CACHE STRING "OpenCellID API key")
-mark_as_advanced (OPENCELLID_API_KEY)
 
 if (CMAKE_USE_PTHREADS_INIT)
     set (HAVE_PTHREAD ON)
@@ -773,8 +794,13 @@ include(Dart)
 set (CPACK_PACKAGE_NAME "Gammu")
 set (CPACK_PACKAGE_VERSION "${GAMMU_VERSION}")
 set (CPACK_PACKAGE_DESCRIPTION_SUMMARY "Gammu All Mobile Management Utilities ${GAMMU_VERSION}")
-set (CPACK_PACKAGE_VENDOR "Michal Čihař")
-set (CPACK_PACKAGE_CONTACT "Michal Čihař <michal@cihar.com>")
+if (WIN32)
+    set (CPACK_PACKAGE_VENDOR "Michal Cihar")
+    set (CPACK_PACKAGE_CONTACT "Michal Cihar <michal@cihar.com>")
+else ()
+    set (CPACK_PACKAGE_VENDOR "Michal Čihař")
+    set (CPACK_PACKAGE_CONTACT "Michal Čihař <michal@cihar.com>")
+endif ()
 set (CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/installer/description.txt")
 # On Mac OS, the file needs .txt extension, give it to them
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/README.rst" "${CMAKE_CURRENT_BINARY_DIR}/readme.txt" COPYONLY)
@@ -878,8 +904,8 @@ set (CPACK_COMPONENT_MEDIA_INSTALL_TYPES Full)
 if (WIN32 AND NOT CYGWIN)
   set (CPACK_PACKAGE_INSTALL_DIRECTORY "Gammu ${GAMMU_VERSION}")
   set (CPACK_NSIS_DISPLAY_NAME "Gammu ${GAMMU_VERSION}")
-  set (CPACK_NSIS_HELP_LINK "http://wammu.eu/support/")
-  set (CPACK_NSIS_URL_INFO_ABOUT "http://wammu.eu/gammu/")
+  set (CPACK_NSIS_HELP_LINK "https://wammu.eu/support/")
+  set (CPACK_NSIS_URL_INFO_ABOUT "https://wammu.eu/gammu/")
   set (CPACK_NSIS_CONTACT "michal@cihar.com")
   set (CPACK_NSIS_MODIFY_PATH ON)
   SET(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "

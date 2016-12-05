@@ -7,6 +7,10 @@
 #ifndef __gammu_smsd_h
 #define __gammu_smsd_h
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #include <gammu-error.h>
 #include <gammu-message.h>
 #include <gammu-misc.h>
@@ -37,7 +41,7 @@ typedef struct _GSM_SMSDConfig GSM_SMSDConfig;
  */
 typedef struct {
 	/**
-	 * Version of this structure (1 for now).
+	 * Version of this structure (2 for now).
 	 */
 	int Version;
 	/**
@@ -72,6 +76,14 @@ typedef struct {
 	 * Phone IMEI.
 	 */
 	char IMEI[GSM_MAX_IMEI_LENGTH + 1];
+	/**
+	 * SIM IMSI.
+	 */
+	char IMSI[GSM_MAX_INFO_LENGTH + 1];
+	/**
+	 * Network information.
+	 */
+	GSM_NetworkInfo NetInfo;
 } GSM_SMSDStatus;
 
 /**
@@ -126,6 +138,13 @@ GSM_Error SMSD_ReadConfig(const char *filename, GSM_SMSDConfig * Config,
 			  gboolean uselog);
 
 /**
+ * Forces using global debug for smsd.
+ *
+ * This should be used only in case SMSD is not used in a library.
+ */
+void SMSD_EnableGlobalDebug(GSM_SMSDConfig *Config);
+
+/**
  * Main SMS daemon loop. It connects to phone, scans for messages and
  * sends messages from inbox. Can be interrupted by SMSD_Shutdown.
  *
@@ -163,6 +182,9 @@ GSM_SMSDConfig *SMSD_NewConfig(const char *name);
  * \ingroup SMSD
  */
 void SMSD_FreeConfig(GSM_SMSDConfig * config);
+#ifdef	__cplusplus
+}
+#endif
 #endif
 
 /* Editor configuration

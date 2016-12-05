@@ -51,14 +51,14 @@ typedef struct {
 	GSM_Phone_RequestID requestid;
 } SpecialAnswersStruct;
 
-static GSM_Error AT_StateMachine(GSM_StateMachine *s, unsigned char rx_char)
+GSM_Error AT_StateMachine(GSM_StateMachine *s, unsigned char rx_char)
 {
 	GSM_Protocol_Message 	Msg2;
 	GSM_Protocol_ATData 	*d = &s->Protocol.Data.AT;
 	size_t			i;
 
 	/* These are lines with end of "normal" answers */
-	static const char 		*StartStrings[] = {
+	static const char 		*StatusStrings[] = {
 		/* Standard AT */
 		"OK\r",
 		"ERROR\r",
@@ -85,95 +85,110 @@ static GSM_Error AT_StateMachine(GSM_StateMachine *s, unsigned char rx_char)
 	static const SpecialAnswersStruct SpecialAnswers[] = {
 		/* Standard GSM */
 		{"+CGREG:"	,1, ID_GetNetworkInfo},
-		{"+CBM:"	,1, ID_None},
-		{"+CMT:"	,2, ID_None},
-		{"+CMTI:"	,1, ID_None},
-		{"+CDS:"	,2, ID_None},
-		{"+CDSI:"	,1, ID_None},
+		{"+CBM:"	,1, ID_All},
+		{"+CMT:"	,2, ID_All},
+		{"+CMTI:"	,1, ID_All},
+		{"+CDS:"	,2, ID_All},
+		{"+CDSI:"	,1, ID_All},
 		{"+CREG:"	,1, ID_GetNetworkInfo},
-		{"+CUSD"	,1, ID_None},
-		{"+COLP"	,1, ID_None},
-		{"+CLIP"	,1, ID_None},
-		{"+CRING"	,1, ID_None},
-		{"+CCWA"	,1, ID_None},
+		{"+CUSD"	,1, ID_All},
+		{"+COLP"	,1, ID_All},
+		{"+CLIP"	,1, ID_All},
+		{"+CRING"	,1, ID_All},
+		{"+CCWA"	,1, ID_All},
+		{"+CLCC"	,1, ID_All},
 
 		/* Standard AT */
-		{"RING"		,1, ID_None},
-		{"NO CARRIER"	,1, ID_None},
-		{"NO ANSWER"	,1, ID_None},
+		{"RING"		,1, ID_All},
+		{"NO CARRIER"	,1, ID_All},
+		{"NO ANSWER"	,1, ID_All},
 
 		/* GlobeTrotter */
-		{"_OSIGQ:"	,1, ID_None},
-		{"_OBS:"	,1, ID_None},
+		{"_OSIGQ:"	,1, ID_All},
+		{"_OBS:"	,1, ID_All},
 
-		{"^SCN:"	,1, ID_None},
+		{"^SCN:"	,1, ID_All},
 
 		/* Sony-Ericsson */
-		{"*EBCA"	,1, ID_None},
+		{"*EBCA"	,1, ID_All},
 
 		/* Samsung binary transfer end */
-		{"SDNDCRC ="	,1, ID_None},
+		{"SDNDCRC ="	,1, ID_All},
 		/* Samsung reply to SSHT in some cases */
-		{"SAMSUNG PTS DG Test", 1, ID_None},
+		{"SAMSUNG PTS DG Test", 1, ID_All},
 
 		/* Cross PD1101wi reply to almost anything */
-		{"NOT FOND ^,NOT CUSTOM AT", 1, ID_None},
+		{"NOT FOND ^,NOT CUSTOM AT", 1, ID_All},
 
 		/* Motorola banner */
-		{"+MBAN:"	,1, ID_None},
+		{"+MBAN:"	,1, ID_All},
 
 		/* HSPA CORPORATION */
-		{"+ZEND"	,1, ID_None},
+		{"+ZEND"	,1, ID_All},
 
 		/* Huawei */
-		{"^RSSI:"	,1, ID_None}, /* ^RSSI:18 */
-		{"^DSFLOWRPT:"	,1, ID_None}, /* ^DSFLOWRPT:00000124,00000082,00000EA6,0000000000012325,000000000022771D,0000BB80,0001F400 */
-		{"^BOOT:"	,1, ID_None}, /* ^BOOT:27710117,0,0,0,75 */
-		{"^MODE:"	,1, ID_None}, /* ^MODE:3,3 */
-		{"^CSNR:"	,1, ID_None}, /* ^CSNR:-93,-23 */
-		{"^HCSQ:"	,1, ID_None}, /* ^HCSQ:"LTE",59,50,161,24 */
-		{"^SRVST:"	,1, ID_None}, /* ^SRVST:0 */
-		{"^SIMST:"	,1, ID_None}, /* ^SIMST:1 */
+		{"^RSSI:"	,1, ID_All}, /* ^RSSI:18 */
+		{"^HCSQ:"	,1, ID_All}, /* ^HCSQ:"WCDMA",39,29,45 */
+		{"^DSFLOWRPT:"	,1, ID_All}, /* ^DSFLOWRPT:00000124,00000082,00000EA6,0000000000012325,000000000022771D,0000BB80,0001F400 */
+		{"^BOOT:"	,1, ID_All}, /* ^BOOT:27710117,0,0,0,75 */
+		{"^MODE:"	,1, ID_All}, /* ^MODE:3,3 */
+		{"^CSNR:"	,1, ID_All}, /* ^CSNR:-93,-23 */
+		{"^HCSQ:"	,1, ID_All}, /* ^HCSQ:"LTE",59,50,161,24 */
+		{"^SRVST:"	,1, ID_All}, /* ^SRVST:0 */
+		{"^SIMST:"	,1, ID_All}, /* ^SIMST:1 */
+		{"^STIN:"	,1, ID_All}, /* ^STIN: 7, 0, 0 */
 
 		/* ONDA */
-		{"+ZUSIMR:"	,1, ID_None}, /* +ZUSIMR:2 */
+		{"+ZUSIMR:"	,1, ID_All}, /* +ZUSIMR:2 */
 
-		{NULL		,1, ID_None}};
+		{NULL		,1, ID_All}};
 
-    	/* Ignore leading CR, LF and ESC */
-    	if (d->Msg.Length == 0) {
-		if (rx_char == 10 || rx_char == 13 || rx_char == 27) return ERR_NONE;
-		d->LineStart = d->Msg.Length;
+	/* We're starting new message */
+	if (d->Msg.Length == 0) {
+		/* Ignore leading CR, LF and ESC */
+		if (rx_char == 10 || rx_char == 13 || rx_char == 27) {
+			return ERR_NONE;
+		}
+		d->LineStart = 0;
 	}
 
+	/* Allocate more memory if needed */
 	if (d->Msg.BufferUsed < d->Msg.Length + 2) {
-		d->Msg.BufferUsed	= d->Msg.Length + 2;
+		d->Msg.BufferUsed	= d->Msg.Length + 200;
 		d->Msg.Buffer 		= (unsigned char *)realloc(d->Msg.Buffer,d->Msg.BufferUsed);
+		if (d->Msg.Buffer == NULL) {
+			return ERR_MOREMEMORY;
+		}
 	}
+
+	/* Store current char in the buffer */
 	d->Msg.Buffer[d->Msg.Length++] = rx_char;
 	d->Msg.Buffer[d->Msg.Length  ] = 0;
 
+	/* Parse char */
 	switch (rx_char) {
 	case 0:
 		break;
 	case 10:
 	case 13:
-		if (!d->wascrlf) {
+		/* Store line end (if we did not do it in last char */
+		if (! d->wascrlf) {
 			d->LineEnd = d->Msg.Length - 1;
 		}
 		d->wascrlf = TRUE;
-		if (d->Msg.Length > 0 && rx_char == 10 && d->Msg.Buffer[d->Msg.Length-2]==13) {
-			i = 0;
-			while (StartStrings[i] != NULL) {
-				if (strncmp(StartStrings[i],
+
+		/* Process line after \r\n */
+		if (d->Msg.Length > 0 && rx_char == 10 && d->Msg.Buffer[d->Msg.Length - 2] == 13) {
+			/* Process standard responses */
+			for (i = 0; StatusStrings[i] != NULL; i++) {
+				if (strncmp(StatusStrings[i],
 							d->Msg.Buffer + d->LineStart,
-							strlen(StartStrings[i])) == 0) {
+							strlen(StatusStrings[i])) == 0) {
 					s->Phone.Data.RequestMsg	= &d->Msg;
 					s->Phone.Data.DispatchError	= s->Phone.Functions->DispatchMessage(s);
 					d->Msg.Length			= 0;
 					break;
 				}
-				i++;
 			}
 			/* Generally hack for A2D */
 			if (d->CPINNoOK) {
@@ -183,13 +198,12 @@ static GSM_Error AT_StateMachine(GSM_StateMachine *s, unsigned char rx_char)
 					s->Phone.Data.RequestMsg	= &d->Msg;
 					s->Phone.Data.DispatchError	= s->Phone.Functions->DispatchMessage(s);
 					d->Msg.Length			= 0;
+					break;
 				}
 			}
-			if (d->Msg.Length == 0)
-				break;
 
-			i = 0;
-			while (SpecialAnswers[i].text != NULL) {
+			/* Check for incoming frames */
+			for (i = 0; SpecialAnswers[i].text != NULL; i++) {
 				if (strncmp(SpecialAnswers[i].text,
 							d->Msg.Buffer + d->LineStart,
 							strlen(SpecialAnswers[i].text)) == 0) {
@@ -206,14 +220,13 @@ static GSM_Error AT_StateMachine(GSM_StateMachine *s, unsigned char rx_char)
 					d->SpecialAnswerStart 	= d->LineStart;
 					d->SpecialAnswerLines	= SpecialAnswers[i].lines;
 				}
-				i++;
 			}
 
-
+			/* Last line of incoming frame */
 			if (d->SpecialAnswerLines == 1) {
 				/* This is end of special answer. We copy it and send to phone module */
 				Msg2.Buffer = (unsigned char *)malloc(d->LineEnd - d->SpecialAnswerStart + 3);
-				memcpy(Msg2.Buffer,d->Msg.Buffer+d->SpecialAnswerStart,d->LineEnd - d->SpecialAnswerStart + 2);
+				memcpy(Msg2. Buffer, d->Msg.Buffer + d->SpecialAnswerStart, d->LineEnd - d->SpecialAnswerStart + 2);
 				Msg2.Length = d->LineEnd - d->SpecialAnswerStart + 2;
 				Msg2.Buffer[Msg2.Length] = '\0';
 				Msg2.Type = 0;
@@ -221,7 +234,7 @@ static GSM_Error AT_StateMachine(GSM_StateMachine *s, unsigned char rx_char)
 				s->Phone.Data.RequestMsg	= &Msg2;
 				s->Phone.Data.DispatchError	= s->Phone.Functions->DispatchMessage(s);
 				free(Msg2.Buffer);
-				Msg2.Buffer=NULL;
+				Msg2.Buffer = NULL;
 
 				/* We cut special answer from main buffer */
 				d->Msg.Length			= d->SpecialAnswerStart;
@@ -232,8 +245,8 @@ static GSM_Error AT_StateMachine(GSM_StateMachine *s, unsigned char rx_char)
 				/* We need to find earlier values of all variables */
 				d->wascrlf 			= FALSE;
 				d->LineStart			= 0;
-				for (i=0;i<d->Msg.Length;i++) {
-					switch(d->Msg.Buffer[i]) {
+				for (i = 0;i < d->Msg.Length; i++) {
+					switch (d->Msg.Buffer[i]) {
 					case 0:
 						break;
 					case 10:
@@ -252,24 +265,26 @@ static GSM_Error AT_StateMachine(GSM_StateMachine *s, unsigned char rx_char)
 				}
 				d->Msg.Buffer[d->Msg.Length] = 0;
 			}
-			if (d->SpecialAnswerLines > 0) d->SpecialAnswerLines--;
+			if (d->SpecialAnswerLines > 0) {
+				d->SpecialAnswerLines--;
+			}
 		}
 		break;
 	case 'T':
 		/* When CONNECT string received, we know there will not follow
 		 * anything AT related, after CONNECT can follow ppp data, alcabus
-         	 * data and also other things.
-         	 */
-        	if (strncmp(d->Msg.Buffer+d->LineStart, "CONNECT", 7) == 0) {
-            		s->Phone.Data.RequestMsg   	= &d->Msg;
-           		s->Phone.Data.DispatchError	= s->Phone.Functions->DispatchMessage(s);
-            		d->LineStart              	= -1;
+		 * data and also other things.
+		 */
+		if (strncmp(d->Msg.Buffer + d->LineStart, "CONNECT", 7) == 0) {
+			s->Phone.Data.RequestMsg   	= &d->Msg;
+			s->Phone.Data.DispatchError	= s->Phone.Functions->DispatchMessage(s);
+			d->LineStart              	= -1;
 			d->Msg.Length			= 0;
-            		break;
-       		}
+			break;
+		}
 	default:
 		if (d->wascrlf) {
-			d->LineStart	= d->Msg.Length-1;
+			d->LineStart	= d->Msg.Length - 1;
 			d->wascrlf 	= FALSE;
 		}
 		if (d->EditMode) {
@@ -283,7 +298,7 @@ static GSM_Error AT_StateMachine(GSM_StateMachine *s, unsigned char rx_char)
 	return ERR_NONE;
 }
 
-static GSM_Error AT_Initialise(GSM_StateMachine *s)
+GSM_Error AT_Initialise(GSM_StateMachine *s)
 {
 	GSM_Protocol_ATData *d = &s->Protocol.Data.AT;
 	GSM_Error		error;

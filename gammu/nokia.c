@@ -263,7 +263,7 @@ void NokiaAddPlayLists2(unsigned char *ID,unsigned char *Name,unsigned char *IDF
 			break;
 		}
 		if (error == ERR_FILENOTEXIST) {
-			return;
+			goto out;
 		}
 	    	Print_Error(error);
 
@@ -412,6 +412,8 @@ void NokiaAddPlayLists2(unsigned char *ID,unsigned char *Name,unsigned char *IDF
 			j+=UnicodeLength(Names2+j)*2+2;
 		}
 	}
+
+out:
 	free(Names);
 	free(Names2);
 }
@@ -437,7 +439,7 @@ void NokiaAddPlayLists(int argc UNUSED, char *argv[] UNUSED)
 	    	Print_Error(error);
 	}
 	if (error == ERR_FILENOTEXIST) {
-		printf("%s\n", _("Your phone model is not supported. Please report it to authors (see <http://wammu.eu/support/bugs/>). Thank you."));
+		printf("%s\n", _("Your phone model is not supported. Please report it to authors (see <https://wammu.eu/support/bugs/>). Thank you."));
 		GSM_Terminate();
 		Terminate(2);
 	} else if (error != ERR_EMPTY) {

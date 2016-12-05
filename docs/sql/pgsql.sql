@@ -31,8 +31,6 @@ $update_timestamp$ LANGUAGE plpgsql;
 
 --CREATE SEQUENCE outbox_multipart_ID_seq;
 
---CREATE SEQUENCE pbk_groups_ID_seq;
-
 --CREATE SEQUENCE sentitems_ID_seq;
 
 -- --------------------------------------------------------
@@ -47,24 +45,7 @@ $update_timestamp$ LANGUAGE plpgsql;
 
 --CREATE UNIQUE INDEX outbox_multipart_pkey ON outbox_multipart USING btree ("ID");
 
---CREATE UNIQUE INDEX pbk_groups_pkey ON pbk_groups USING btree ("ID");
-
 --CREATE UNIQUE INDEX sentitems_pkey ON sentitems USING btree ("ID");
-
--- --------------------------------------------------------
--- 
--- Table structure for table "daemons"
--- 
-
-CREATE TABLE daemons (
-  "Start" text NOT NULL,
-  "Info" text NOT NULL
-);
-
--- 
--- Dumping data for table "daemons"
--- 
-
 
 -- --------------------------------------------------------
 
@@ -73,14 +54,14 @@ CREATE TABLE daemons (
 -- 
 
 CREATE TABLE gammu (
-  "Version" smallint NOT NULL DEFAULT '0'
+  "Version" smallint NOT NULL DEFAULT '0' PRIMARY KEY
 );
 
 -- 
 -- Dumping data for table "gammu"
 -- 
 
-INSERT INTO gammu ("Version") VALUES (15);
+INSERT INTO gammu ("Version") VALUES (16);
 
 -- --------------------------------------------------------
 
@@ -142,7 +123,8 @@ CREATE TABLE outbox (
   "SendingTimeOut" timestamp(0) WITHOUT time zone NOT NULL DEFAULT LOCALTIMESTAMP(0),
   "DeliveryReport" varchar(10) DEFAULT 'default',
   "CreatorID" text NOT NULL,
-  "Retries" integer DEFAULT "0",
+  "Retries" integer DEFAULT '0',
+  "Priority" integer DEFAULT '0',
   CHECK ("Coding" IN 
   ('Default_No_Compression','Unicode_No_Compression','8bit','Default_Compression','Unicode_Compression')),
   CHECK ("DeliveryReport" IN ('default','yes','no'))
@@ -190,40 +172,6 @@ CREATE TABLE outbox_multipart (
 -- --------------------------------------------------------
 
 -- 
--- Table structure for table "pbk"
--- 
-
-CREATE TABLE pbk (
-  "ID" serial PRIMARY KEY,
-  "GroupID" integer NOT NULL DEFAULT '-1',
-  "Name" text NOT NULL,
-  "Number" text NOT NULL
-);
-
--- 
--- Dumping data for table "pbk"
--- 
-
-
--- --------------------------------------------------------
-
--- 
--- Table structure for table "pbk_groups"
--- 
-
-CREATE TABLE pbk_groups (
-  "Name" text NOT NULL,
-  "ID" serial PRIMARY KEY
-);
-
--- 
--- Dumping data for table "pbk_groups"
--- 
-
-
--- --------------------------------------------------------
-
--- 
 -- Table structure for table "phones"
 -- 
 
@@ -235,6 +183,7 @@ CREATE TABLE phones (
   "Send" boolean NOT NULL DEFAULT 'no',
   "Receive" boolean NOT NULL DEFAULT 'no',
   "IMEI" varchar(35) PRIMARY KEY NOT NULL,
+  "IMSI" varchar(35) NOT NULL,
   "NetCode" varchar(10) DEFAULT 'ERROR',
   "NetName" varchar(35) DEFAULT 'ERROR',
   "Client" text NOT NULL,

@@ -10,7 +10,7 @@
 
 #include "common.h"
 
-extern GSM_Error ATGEN_MakeSMSFrame(GSM_StateMachine * s, GSM_SMSMessage * message, unsigned char *hexreq, int *current, int *length2);
+extern GSM_Error ATGEN_MakeSMSFrame(GSM_StateMachine *s, GSM_SMSMessage *message, unsigned char *hexreq, size_t hexlength, int *current, size_t *length2);
 
 #define BUFFER_SIZE 16384
 
@@ -24,10 +24,16 @@ int main(int argc, char **argv)
 	size_t len;
 	GSM_StateMachine *s;
 	GSM_Error error;
-	int current, current2;
+	int current;
+	size_t current2;
 	unsigned char hexreq[1000];
-	GSM_SMS_Backup Backup;
+	GSM_SMS_Backup *Backup;
 	gboolean generate = FALSE;
+
+	Backup = malloc(sizeof(GSM_SMS_Backup));
+	if (Backup == NULL) {
+		return 99;
+	}
 
 	/* Enable debugging */
 	debug_info = GSM_GetGlobalDebug();
@@ -46,7 +52,7 @@ int main(int argc, char **argv)
 	}
 
 	/* Read message */
-	error = GSM_ReadSMSBackupFile(argv[1], &Backup);
+	error = GSM_ReadSMSBackupFile(argv[1], Backup);
 	gammu_test_result(error, "GSM_ReadSMSBackupFile");
 
 	if (!generate) {
@@ -93,11 +99,11 @@ int main(int argc, char **argv)
 	Priv->SIMSMSMemory = AT_AVAILABLE;
 
 	/* Format SMS frame */
-	error = ATGEN_MakeSMSFrame(s, Backup.SMS[0], hexreq, &current, &current2);
+	error = ATGEN_MakeSMSFrame(s, Backup->SMS[0], hexreq, sizeof(hexreq), &current, &current2);
 	gammu_test_result(error, "ATGEN_MakeSMSFrame");
 
 	/* We don't need this anymore */
-	GSM_FreeSMSBackup(&Backup);
+	GSM_FreeSMSBackup(Backup);
 
 	/* Display message */
 	if (generate) {

@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: libgammu 1.28.91\n"
 "Report-Msgid-Bugs-To: gammu-users@lists.sourceforge.net\n"
-"POT-Creation-Date: 2015-03-03 10:40+0100\n"
-"PO-Revision-Date: 2015-03-03 11:03+0200\n"
+"POT-Creation-Date: 2016-10-11 08:16+0200\n"
+"PO-Revision-Date: 2016-10-11 07:27+0000\n"
 "Last-Translator: Burak Yavuz <hitowerdigit@hotmail.com>\n"
 "Language-Team: Turkish "
 "<https://hosted.weblate.org/projects/gammu/libgammu/tr/>\n"
@@ -17,7 +17,7 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n > 1;\n"
-"X-Generator: Weblate 2.3-dev\n"
+"X-Generator: Weblate 2.9-dev\n"
 
 #: libgammu/gsmcomon.c:84
 msgid "No error."
@@ -80,27 +80,27 @@ msgstr ""
 
 #: libgammu/gsmcomon.c:98
 msgid ""
-"Frame not requested right now. See <http://wammu.eu/support/bugs/> for "
+"Frame not requested right now. See <https://wammu.eu/support/bugs/> for "
 "information how to report it."
 msgstr ""
-"Çerçeve şu anda istenmedi. Nasıl raporlandığı bilgisi için <http://wammu.eu/"
-"support/bugs/> adresine bakın."
+"Çerçeve şu anda istenmedi. Nasıl raporlandığı bilgisi için "
+"<https://wammu.eu/support/bugs/> adresine bakın."
 
 #: libgammu/gsmcomon.c:99
 msgid ""
-"Unknown response from phone. See <http://wammu.eu/support/bugs/> for "
+"Unknown response from phone. See <https://wammu.eu/support/bugs/> for "
 "information how to report it."
 msgstr ""
-"Telefondan bilinmeyen yanıt. Nasıl raporlandığı bilgisi için <http://wammu."
-"eu/support/bugs/> adresine bakın."
+"Telefondan bilinmeyen yanıt. Nasıl raporlandığı bilgisi için "
+"<https://wammu.eu/support/bugs/> adresine bakın."
 
 #: libgammu/gsmcomon.c:100
 msgid ""
-"Unknown frame. See <http://wammu.eu/support/bugs/> for information how to "
+"Unknown frame. See <https://wammu.eu/support/bugs/> for information how to "
 "report it."
 msgstr ""
-"Bilinmeyen çerçeve. Bilgiyi nasıl bildireceğiniz için <http://wammu.eu/"
-"support/bugs/> adresine bakın."
+"Bilinmeyen çerçeve. Bilgiyi nasıl bildireceğiniz için "
+"<https://wammu.eu/support/bugs/> adresine bakın."
 
 #: libgammu/gsmcomon.c:101
 msgid "Unknown connection type string. Check config file."
@@ -352,11 +352,35 @@ msgstr "Giriş salt okunur."
 msgid "Network error."
 msgstr "Ağ hatası."
 
-#: libgammu/gsmcomon.c:189
+#: libgammu/gsmcomon.c:157
+msgid "Invalid database version."
+msgstr "Geçersiz veritabanı sürümü."
+
+#: libgammu/gsmcomon.c:158
+msgid "Failed to initialize DB driver."
+msgstr "DB sürücüsünü başlatma başarısız."
+
+#: libgammu/gsmcomon.c:159
+msgid "Failed to configure DB driver."
+msgstr "DB sürücüsünü yapılandırma başarısız."
+
+#: libgammu/gsmcomon.c:160
+msgid "Failed to connect to database."
+msgstr "Veritabanına bağlanma başarısız."
+
+#: libgammu/gsmcomon.c:161
+msgid "Database connection timeout."
+msgstr "Veritabanı bağlantısı zaman aşımı."
+
+#: libgammu/gsmcomon.c:162
+msgid "Error in executing SQL query."
+msgstr "SQL sorgusu yürütmede hata oldu."
+
+#: libgammu/gsmcomon.c:195
 msgid "Unknown error description."
 msgstr "Bilinmeyen hata açıklaması."
 
-#: libgammu/phone/dummy/dummy.c:630
+#: libgammu/phone/dummy/dummy.c:610
 msgid "Templates"
 msgstr "Şablonlar"
 
@@ -397,7 +421,7 @@ msgid "SIM"
 msgstr "SIM"
 
 #: libgammu/phone/nokia/dct4s40/6510/n6510.c:579 libgammu/phone/pfunc.c:41
-#: libgammu/phone/s60/s60phone.c:1773
+#: libgammu/phone/s60/s60phone.c:1779
 msgid "Inbox"
 msgstr "Gelen kutusu"
 
@@ -441,6 +465,6 @@ msgstr "Dışarıda"
 msgid "Pager"
 msgstr "Çağrı Cihazı"
 
-#: libgammu/phone/pfunc.c:42 libgammu/phone/s60/s60phone.c:1774
+#: libgammu/phone/pfunc.c:42 libgammu/phone/s60/s60phone.c:1780
 msgid "Outbox"
 msgstr "Giden kutusu"

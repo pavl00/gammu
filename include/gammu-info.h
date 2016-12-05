@@ -12,6 +12,10 @@
  * Phone information.
  */
 
+#ifdef	__cplusplus
+extern "C" {
+#endif
+
 #include <gammu-types.h>
 #include <gammu-error.h>
 #include <gammu-limits.h>
@@ -710,6 +714,14 @@ typedef enum {
 	 * Reset phone after timeout.
 	 */
 	F_RESET_AFTER_TIMEOUT,
+	/**
+	 * Huawei style init.
+	 */
+	F_HUAWEI_INIT,
+	/**
+	 * ZTE style init.
+	 */
+	F_ZTE_INIT,
 
 	/**
 	 * Just marker of highest feature code, should not be used.
@@ -923,6 +935,9 @@ GSM_Error GSM_GetNetworkInfo(GSM_StateMachine * s, GSM_NetworkInfo * netinfo);
  */
 GSM_Error GSM_GetDisplayStatus(GSM_StateMachine * s,
 			       GSM_DisplayFeatures * features);
+#ifdef	__cplusplus
+}
+#endif
 #endif
 
 /* Editor configuration

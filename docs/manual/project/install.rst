@@ -9,7 +9,7 @@ Prebuilt Binaries for Linux
 Many distributions come with prebuilt Gammu binaries, if you can use
 them, it is definitely the easiest thing. There are also binary packages
 of latest release built for many distributions available on Gammu home
-page <http://wammu.eu/gammu/>.
+page <https://wammu.eu/gammu/>.
 
 You can usually also find Gammu in your distribution, so unless you need a
 newer version, just install package from your distribution.
@@ -20,8 +20,8 @@ Debian
 Gammu packages are included in Debian (testing versions go to
 experimental and stable to unstable). If you want to build Debian
 package on your own, you can find packaging in Git repository at
-``git://git.debian.org/git/collab-maint/gammu.git`` (you can browse it on
-<http://git.debian.org/?p=collab-maint/gammu.git>).
+``https://anonscm.debian.org/git/collab-maint/gammu.git`` (you can browse it on
+<https://anonscm.debian.org/git/collab-maint/gammu.git>).
 
 RPM
 +++
@@ -38,7 +38,7 @@ Gammu packages are included in Gentoo. Additionally source tarball contains
 Prebuilt Binaries for Windows
 -----------------------------
 
-You can download Windows binaries from <http://wammu.eu/gammu/>. For
+You can download Windows binaries from <https://wammu.eu/gammu/>. For
 Windows 95, 98 and NT 4.0 you will also need ShFolder DLL, which can be
 downloaded from Microsoft:
 
@@ -50,9 +50,9 @@ http://www.microsoft.com/downloads/details.aspx?displaylang=en&FamilyID=6AE02498
 Dependencies
 ------------
 
-You need CMake from <http://www.cmake.org/> for compiling Gammu.
+You need CMake from <https://cmake.org/> for compiling Gammu.
 
-Additionally pkg-config <http://pkg-config.freedesktop.org/> is used for
+Additionally pkg-config <https://www.freedesktop.org/wiki/Software/pkg-config/> is used for
 detecting available libraries.
 
 .. _opt-deps:
@@ -80,38 +80,37 @@ Required for fbususb/dku2 connection support on Linux.
 libCURL
 +++++++
 
-Required for new versions notification (see :option:`gammu checkversion`) and
-OpenCellID access (see :option:`gammu getlocation`).
+Required for new versions notification (see :option:`gammu checkversion`).
 
-.. seealso:: http://curl.haxx.se/libcurl/
+.. seealso:: https://curl.haxx.se/libcurl/
 
 libiconv
 ++++++++
 
 Used to support more character sets in AT engine.
 
-.. seealso:: http://www.gnu.org/software/libiconv/
+.. seealso:: https://www.gnu.org/software/libiconv/
 
 Gettext
 +++++++
 
 Localization of strings.
 
-.. seealso:: http://www.gnu.org/software/gettext/
+.. seealso:: https://www.gnu.org/software/gettext/
 
 MySQL
 +++++
 
 Required for :ref:`gammu-smsd-mysql` in :ref:`smsd`.
 
-.. seealso:: http://mysql.com/
+.. seealso:: https://www.mysql.com/
 
 PostgreSQL
 ++++++++++
 
 Required for :ref:`gammu-smsd-pgsql` in :ref:`smsd`.
 
-.. seealso:: http://www.postgresql.org/
+.. seealso:: https://www.postgresql.org/
 
 unixODBC
 ++++++++
@@ -136,21 +135,21 @@ Python
 
 Gammu has a Python bindings, see :ref:`python`.
 
-.. seealso:: http://www.python.org/
+.. seealso:: https://www.python.org/
 
 SQLite + libdbi-drivers with SQLite
 +++++++++++++++++++++++++++++++++++
 
 Needed for testing of SMSD using libdbi driver (libdbd-sqlite3), see :ref:`testing`.
 
-.. seealso:: http://www.sqlite.org/
+.. seealso:: https://www.sqlite.org/
 
 glib
 ++++
 
 Currently needed only for :ref:`gammu-detect`.
 
-.. seealso:: http://www.gtk.org/
+.. seealso:: https://www.gtk.org/
 
 gudev
 +++++
@@ -184,6 +183,9 @@ For openSUSE, the installation all optional packages could look like:
         mysql-devel python-devel libcurl-devel cmake pkgconfig unixODBC-devel \
         glib2-devel libgudev-1_0-devel
 
+Configure like wrapper
+++++++++++++++++++++++
+
 For compatibility reasons, configure like wrapper is provided, if you
 don't need much specific tuning, you can use usual set of commands:
 
@@ -196,6 +198,9 @@ don't need much specific tuning, you can use usual set of commands:
 The configure wrapper will create directory build-configure and build all
 binaries there (nothing is changed in source tree), for example gammu binary is
 in build-configure/gammu directory.
+
+Using CMake
++++++++++++
 
 If you need/want to tweak build a bit more than configure wrapper
 provides, you have to use `CMake`_ directly. For now, only out of source
@@ -309,7 +314,7 @@ You will probably need additional SDKs:
 * For gettext (internationalization) support, you will need gettext
   packages from GnuWin32 project.
 * As build is now based on CMake, you will need to get it from
-  http://cmake.org/.
+  https://cmake.org/.
 
 After downloading and installing them into your system:
 
@@ -333,7 +338,7 @@ After downloading and installing them into your system:
   * Project file should be named Gammu.dsw or Gammu.sln depending on
     what MSVC version you choose.
   * You should see ALL_BUILD target, which builds everything needed,
-    simmilar to make all on Linux.
+    similar to make all on Linux.
 
 * For running testsuite, you need working sh and sed. The easiest way to
   install them is from MinGW project <http://mingw.org/>.
@@ -444,7 +449,7 @@ CMakeLists.txt. You might need to tune it for your environment.
 Third party libraries
 +++++++++++++++++++++
 
-The easies way to link with third party libraries is to add path to
+The easiest way to link with third party libraries is to add path to
 their installation to cmake/Toolchain-mingw32.cmake or to list these
 paths in CMAKE_FIND_ROOT_PATH when invoking cmake.
 
@@ -557,8 +562,8 @@ To debug program crashes, you might want to build Gammu with
 with protections GCC makes and produce bogus back traces.
 
 
-Compliling python-gammu
------------------------
+Compiling python-gammu
+----------------------
 
 Currently python-gammu is distributed as a separate package, which follows
 Python usual method for building modules - distutils, so use :file:`setup.py`

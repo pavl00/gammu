@@ -26,10 +26,7 @@ of the same message from :ref:`outbox_multipart`.
 Description of tables
 ---------------------
 
-daemons
-+++++++
-
-Information about running daemons.
+.. _gammu-table: 
 
 gammu
 +++++
@@ -149,7 +146,7 @@ Fields description:
 ``SenderID`` (text)
     which SMSD instance should send this one sequence, see
     :config:option:`PhoneID` and :ref:`smsd-multi`. If blank, first SMSD who
-    sees this message will process it.
+    sees this message first will process it.
 
 ``SendingTimeOut`` (timestamp)
     used by SMSD instance for own targets
@@ -162,6 +159,9 @@ Fields description:
 
 ``Retries`` (integer)
     number of attempted retries when sending this message
+
+``Priority`` (integer)
+    priority of message, messages with higher priority are processed first
 
 .. _outbox_multipart:
 
@@ -191,6 +191,7 @@ Fields description:
     info, what is SMS number in SMS sequence (start at 2, first part is in :ref:`outbox`
     table).
 
+.. _phones:
 
 phones
 ++++++
@@ -221,6 +222,9 @@ Fields description:
 ``IMEI`` (text)
     IMEI of phone
 
+``IMSI`` (text)
+    SIM IMSI
+
 ``Client`` (text)
     client name, usually string Gammu with version
 
@@ -237,6 +241,8 @@ Fields description:
 ``Received`` (integer)
     Number of received SMS messages (SMSD does not reset this counter, so it might
     overflow).
+
+.. _sentitems:
 
 sentitems
 +++++++++
@@ -259,7 +265,7 @@ Fields description:
     Time of receiving delivery report (if it has been enabled).
 
 ``Status`` (enum('SendingOK', 'SendingOKNoReport', 'SendingError', 'DeliveryOK', 'DeliveryFailed', 'DeliveryPending', 'DeliveryUnknown', 'Error'))
-    Status of message sending. SendingError mens that phone failed to send the
+    Status of message sending. SendingError means that phone failed to send the
     message, Error indicates some other error while processing message.
 
     ``SendingOK``
@@ -323,16 +329,6 @@ Fields description:
     copied from CreatorID from outbox table
 
 
-pbk
-+++
-
-Not used by SMSD currently, included only for application usage.
-
-pbk_groups
-++++++++++
-
-Not used by SMSD currently, included only for application usage.
-
 .. _smsd-tables-history:
 
 History of database structure
@@ -341,15 +337,24 @@ History of database structure
 .. note::
 
     Testing versions (see :ref:`versioning`) do not have to keep same table
-    structure as final releases. Bellow mentioned versions are for
+    structure as final releases. Below mentioned versions are for
     informational purposes only, you should always use stable versions in
     production environment.
 
 History of schema versions:
 
+16
+
+    * Removed unused ``daemons``, ``pbk`` and ``pbk_groups`` tables.
+    * Added primary key to the ``gammu`` table.
+    * Added ``Priority`` field to the :ref:`outbox`.
+    * Added ``IMSI`` field to the :ref:`phones`.
+
+    .. versionchanged:: 1.37.90
+
 15
 
-    Added ``Retries`` field.
+    Added ``Retries`` field to the :ref:`outbox`.
 
     .. versionchanged:: 1.36.7
 

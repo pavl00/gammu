@@ -1,4 +1,4 @@
-ChangeLog for Gammu project <http://www.gammu.org/>
+ChangeLog for Gammu project <https://wammu.eu/gammu/>
 ===================================================
 
 Description
@@ -19,11 +19,78 @@ the issue.
 ChangeLog
 =========
     
-2015???? - 1.36.8
+2016???? - 1.38.0
+
+[-] * MySQL script for SMSD is compatible with strict mode.
+[-] * Fixed USSD responses for some AT modems.
+[-] * Fixed parsing network status for some modems (eg. Quectel UC15).
+[-] * Fixed handling of emojis and other Unicode chars from supplementary plan.
+
+20161023 - 1.37.91
+
+[!] * Changed version of the shared library.
+[-] * Improved support for ZTE MF100.
+[-] * Ignore unsolicited +CLCC: reply.
+[-] * Correctly report when some SMSD SQL backend is not compiled in.
+[-] * Fix build of MySQL backend on Linux.
+
+20161018 - 1.37.90
+    
+[-] * Improved support Huawei K3770.
+[!] * API changes in some parameter types.
+[-] * Fixed various Windows compilation issues.
+[-] * Fixed several resource leaks.
+[-] * Create outbox SMS atomically in FILES backend.
+[!] * Removed getlocation command as we no longer fit into their usage policy.
+[-] * Fixed call diverts on TP-LINK MA260.
+[+] * Initial support for Oracle database.
+[!] * Removed unused daemons, pbk and pbk_groups tables from the SMSD schema.
+[+] * SMSD outbox entries now can have priority set in the database.
+[+] * Added SIM IMSI to the SMSD status table.
+[+] * Added CheckNetwork directive.
+[+] * SMSD attempts to power on radio if disabled.
+[-] * Fixed processing of AT unsolicited responses in some cases.
+[-] * Fixed parsing USSD responses from some devices.
+
+20160816 - 1.37.4
+    
+[-] * Improved support for Huawei E3131.
+[-] * Fixed SMS support for MULTIBAND 900E.
+[-] * Fixed SMS created in text mode.
+
+20160524 - 1.37.3
+
+[-] * Improved support for Huawei E398.
+[-] * Improved support for Huawei/Vodafone K4505.
+[-] * Fixed possible crash if SMSD used in library.
+[-] * Improved support for Huawei E180.
+
+20160413 - 1.37.2
+    
+[-] * Fixed compilation of SMSD.
+
+20160413 - 1.37.1
+
+[-] * Properly report errors in HEX encoded strings from SMSD SQL backends.
+[-] * Configurable SMSD table names.
+[-] * Improved support for Huawei E303.
+[-] * Improved support for Vodafone K4511.
+[-] * Improved support for Telit M2M modules.
+
+20160203 - 1.37.0
+
+[-] * Improved compatibility with ZTE MF190.
+[-] * Improved compatibility with Huawei E1750.
+[-] * Improved compatibility with Huawei E1752.
+[-] * Increased detail of reported errors from SMSD.
+
+20151208 - 1.36.8
 
 [-] * Changed default value for ReceiveFrequency.
 [-] * Fixed compatibility for PostgreSQL.
 [-] * Fixed build failure with all disabled SMSD backends.
+[-] * Documentation improvements.
+[-] * Fixed mixing C++ code with SMSD.
     
 20151129 - 1.36.7
 
@@ -309,7 +376,7 @@ ChangeLog
 [+] * SMSD can now be configured just for sending/receiving.
 [-] * Fixed battery status for S40 phones (bug #1301).
 [-] * Improved compatibility with Motorola phonebook (bug #1128).
-[+] * Lot of documentation improvements, check <http://wammu.eu/docs/devel/docs/>.
+[+] * Lot of documentation improvements, check <https://wammu.eu/docs/devel/docs/>.
     
 20100827 - 1.28.90
 
@@ -1796,9 +1863,9 @@ use mailing list.
   * fixed bug in msvc2005 for getting online files
 
 NOTES: it was annouced on mailing list, but I will remind:
-       1. http://www.gammu.net/support/texts/road06.php contains a lot of info
+       1. https://wammu.eu/docs/manual/project/ contains a lot of info
        about Nokia & Gammu history, Gammu possible future and many others
-       2. http://www.gammu.net/support/phones/phonedb.php will be "our"
+       2. https://wammu.eu/phones/ will be "our"
        phone database. It's in beta state, but even now give a lot of info
 
 20051202 - 1.03.20

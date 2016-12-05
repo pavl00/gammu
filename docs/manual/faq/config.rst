@@ -19,7 +19,7 @@ one - for example only one of them can receive USSD notifications.
 .. note::
 
     On Linux, you might have to install `usb-modeswitch`_ to make your modem
-    acutally behave like a modem and not like a disk containing drivers for
+    actually behave like a modem and not like a disk containing drivers for
     Windows.
 
 .. seealso:: :ref:`faq-devname`, :ref:`gammurc`
@@ -127,4 +127,4 @@ You can also find additional user experiences in `Gammu Phones Database`_.
 
 .. seealso:: :ref:`faq-phones`, :ref:`gammurc`
 
-.. _Gammu Phones Database: http://wammu.eu/phones/
+.. _Gammu Phones Database: https://wammu.eu/phones/

@@ -96,7 +96,7 @@ gboolean eventlog_register(void)
 		0,
 		REG_SZ,
 		(BYTE *)program_name,
-		strlen(program_name) + 1);
+		(DWORD)strlen(program_name) + 1);
 
 	if (ret != ERROR_SUCCESS) {
 		fprintf(stderr, "Failed to write EventMessageFile to registry!\n");
@@ -109,7 +109,7 @@ gboolean eventlog_register(void)
 		0,
 		REG_SZ,
 		(BYTE *)program_name,
-		strlen(program_name) + 1);
+		(DWORD)strlen(program_name) + 1);
 
 	if (ret != ERROR_SUCCESS) {
 		fprintf(stderr, "Failed to write ParameterMessageFile to registry!\n");
@@ -149,8 +149,8 @@ void eventlog_log(void *handle, int level, const char *message)
 {
 	LPCTSTR lpstrings[1];
 	WORD evtype = EVENTLOG_ERROR_TYPE;
+	WORD eventcat = 0;
 	DWORD eventid = 0;
-	DWORD eventcat = 0;
 
 	switch (level) {
 		case DEBUG_ERROR:

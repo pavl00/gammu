@@ -14,13 +14,13 @@ Synopsis
     gammu [parameters] <command> [options]
 
 Commands actually indicate which operation should Gammu perform. They can be
-specified with or without leading ``--``.
+specified with or without a leading ``--``.
 
 Description
 +++++++++++
 
 This program is a tool for mobile phones. Many vendors and phones
-are supported, for actual listing see `Gammu Phones Database <http://wammu.eu/phones/>`_.
+are supported, for actual listing see `Gammu Phones Database <https://wammu.eu/phones/>`_.
 
 
 Options
@@ -312,7 +312,7 @@ ____________
 
     .. option:: -maxsms num
 
-        Limit maximal number of messages which will be
+        Limit maximum number of messages which will be
         created. If there are more messages, Gammu will terminate with failure.
 
     Types of messages:
@@ -408,7 +408,7 @@ ____________
 
         .. option:: -variablebitmaplong
 
-            bitmap with maximal size 96x128 saved in one or few sms
+            bitmap with maximum size 96x128 saved in one or few sms
 
         .. option:: -fixedbitmap
 
@@ -960,7 +960,7 @@ Samsung).
 
 .. option:: playringtone file
 
-    Play aproximation of ringtone over phone buzzer. File can be in RTTL or BINARY (Nokia DCT3) format.
+    Play approximation of ringtone over phone buzzer. File can be in RTTL or BINARY (Nokia DCT3) format.
 
 .. option:: playsavedringtone number
 
@@ -1093,7 +1093,7 @@ Backing up and restoring commands
     restore all data).
 
     Use -memory parameter to force usage of defined memory type for storing entries
-    regardless what backu format says.
+    regardless what backup format says.
 
 .. option:: addsms folder file [-yes]
 
@@ -1351,7 +1351,7 @@ Nokia specific commands
 
        EEPROM test can show an error when your phone has an EEPROM in flash
        (like 82xx/7110/62xx/33xx). The clock test will show an error when the
-       phone doesn?t have an internal battery for the clock (like 3xxx).
+       phone doesn't have an internal battery for the clock (like 3xxx).
 
 .. option:: nokiasetlights keypad|display|torch on|off
 
@@ -1465,12 +1465,6 @@ Phone information commands
     Displays information about battery and power source.
 
 .. option:: getdisplaystatus
-
-.. option:: getlocation
-
-    Gets network information from phone (same as networkinfo)
-    and prints location (latitude and longitude) based on information from
-    `OpenCellID <http://opencellid.org>`_.
 
 .. option:: getsecuritystatus
 
@@ -1643,7 +1637,7 @@ Configuration commands
 
     Installs applet for currently configured connection to the phone.
 
-    You can configure search path for instllation files by
+    You can configure search path for installation files by
     :config:option:`DataPath`.
 
     The -minimal parameter forces installation of applet only without possible
@@ -1723,11 +1717,11 @@ values increased by 100:
 114
     No response in specified timeout. Probably phone not connected.
 115
-    Frame not requested right now. See <http://wammu.eu/support/bugs/> for information how to report it.
+    Frame not requested right now. See <https://wammu.eu/support/bugs/> for information how to report it.
 116
-    Unknown response from phone. See <http://wammu.eu/support/bugs/> for information how to report it.
+    Unknown response from phone. See <https://wammu.eu/support/bugs/> for information how to report it.
 117
-    Unknown frame. See <http://wammu.eu/support/bugs/> for information how to report it.
+    Unknown frame. See <https://wammu.eu/support/bugs/> for information how to report it.
 118
     Unknown connection type string. Check config file.
 119
@@ -1985,6 +1979,6 @@ With this settings, Gammu generates /tmp/gammu.log on each connection to
 phone and stores dump of communication there. You can also find some
 hints for improving support for your phone in this log.
 
-See <http://wammu.eu/support/bugs/> for more information on reporting bugs.
+See <https://wammu.eu/support/bugs/> for more information on reporting bugs.
 
 Please report bugs to `Gammu bug tracker <https://github.com/gammu/gammu/issues>`_.

@@ -6,19 +6,19 @@
 #
 msgid ""
 msgstr ""
-"Project-Id-Version: libGammu 1.36.0\n"
+"Project-Id-Version: libGammu 1.38.0\n"
 "Report-Msgid-Bugs-To: gammu-users@lists.sourceforge.net\n"
-"POT-Creation-Date: 2015-03-03 10:40+0100\n"
-"PO-Revision-Date: 2015-11-19 09:27+0000\n"
+"POT-Creation-Date: 2016-10-11 08:16+0200\n"
+"PO-Revision-Date: 2016-07-10 18:02+0000\n"
 "Last-Translator: armagetron <armagetron@live.de>\n"
-"Language-Team: German "
-"<https://hosted.weblate.org/projects/gammu/libgammu/de/>\n"
+"Language-Team: German <https://hosted.weblate.org/projects/gammu/libgammu/de/"
+">\n"
 "Language: de\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=n != 1;\n"
-"X-Generator: Weblate 2.5-dev\n"
+"X-Generator: Weblate 2.8-dev\n"
 
 #: libgammu/gsmcomon.c:84
 msgid "No error."
@@ -88,24 +88,36 @@ msgstr ""
 "angeschlossen."
 
 #: libgammu/gsmcomon.c:98
+#, fuzzy
+#| msgid ""
+#| "Frame not requested right now. See <http://wammu.eu/support/bugs/> for "
+#| "information how to report it."
 msgid ""
-"Frame not requested right now. See <http://wammu.eu/support/bugs/> for "
+"Frame not requested right now. See <https://wammu.eu/support/bugs/> for "
 "information how to report it."
 msgstr ""
 "Rückantwort vom Telefon im Moment nicht angefordert. Lesen Sie bitte unter "
 "<http://wammu.eu/support/bugs/> wo dieser Fehler zu melden ist."
 
 #: libgammu/gsmcomon.c:99
+#, fuzzy
+#| msgid ""
+#| "Unknown response from phone. See <http://wammu.eu/support/bugs/> for "
+#| "information how to report it."
 msgid ""
-"Unknown response from phone. See <http://wammu.eu/support/bugs/> for "
+"Unknown response from phone. See <https://wammu.eu/support/bugs/> for "
 "information how to report it."
 msgstr ""
 "Unbekannte Rückantwort vom Telefon. Lesen Sie bitte unter <http://wammu.eu/"
 "support/bugs/> wo dieser Fehler zu melden ist."
 
 #: libgammu/gsmcomon.c:100
+#, fuzzy
+#| msgid ""
+#| "Unknown frame. See <http://wammu.eu/support/bugs/> for information how to "
+#| "report it."
 msgid ""
-"Unknown frame. See <http://wammu.eu/support/bugs/> for information how to "
+"Unknown frame. See <https://wammu.eu/support/bugs/> for information how to "
 "report it."
 msgstr ""
 "Unbekannter Rückantwort-Frame vom Telefon. Lesen Sie bitte unter <http://"
@@ -367,11 +379,35 @@ msgstr "Eintrag ist nur lesbar."
 msgid "Network error."
 msgstr "Netzwerkfehler."
 
-#: libgammu/gsmcomon.c:189
+#: libgammu/gsmcomon.c:157
+msgid "Invalid database version."
+msgstr "Ungültige Datenbankversion."
+
+#: libgammu/gsmcomon.c:158
+msgid "Failed to initialize DB driver."
+msgstr "Fehler beim Initialisieren des Datenbanktreibers."
+
+#: libgammu/gsmcomon.c:159
+msgid "Failed to configure DB driver."
+msgstr "Fehler bei der Konfiguration des Datenbanktreibers."
+
+#: libgammu/gsmcomon.c:160
+msgid "Failed to connect to database."
+msgstr "Verbindung zur Datenbank fehlgeschlagen."
+
+#: libgammu/gsmcomon.c:161
+msgid "Database connection timeout."
+msgstr "Timeout der Datenbankverbindung."
+
+#: libgammu/gsmcomon.c:162
+msgid "Error in executing SQL query."
+msgstr "Fehler beim Ausführen der SQL Anfrage."
+
+#: libgammu/gsmcomon.c:195
 msgid "Unknown error description."
 msgstr "Unbekannte Fehlerbeschreibung."
 
-#: libgammu/phone/dummy/dummy.c:630
+#: libgammu/phone/dummy/dummy.c:610
 msgid "Templates"
 msgstr "Vorlagen"
 
@@ -412,7 +448,7 @@ msgid "SIM"
 msgstr "SIM"
 
 #: libgammu/phone/nokia/dct4s40/6510/n6510.c:579 libgammu/phone/pfunc.c:41
-#: libgammu/phone/s60/s60phone.c:1773
+#: libgammu/phone/s60/s60phone.c:1779
 msgid "Inbox"
 msgstr "Eingang"
 
@@ -456,7 +492,7 @@ msgstr "Draussen"
 msgid "Pager"
 msgstr "Pager"
 
-#: libgammu/phone/pfunc.c:42 libgammu/phone/s60/s60phone.c:1774
+#: libgammu/phone/pfunc.c:42 libgammu/phone/s60/s60phone.c:1780
 msgid "Outbox"
 msgstr "Ausgang"
 

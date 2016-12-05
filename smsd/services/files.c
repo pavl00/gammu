@@ -10,6 +10,8 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 
 #ifdef WIN32
 #include <io.h>
@@ -23,6 +25,14 @@
 
 #include "../../helper/string.h"
 
+#ifndef PATH_MAX
+#ifdef MAX_PATH
+#define PATH_MAX (MAX_PATH)
+#else
+#define PATH_MAX (4069)
+#endif
+#endif
+
 /**
  * Helper define to check error code from fwrite.
  */
@@ -34,12 +44,12 @@ static GSM_Error SMSDFiles_SaveInboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDConfi
 {
 	GSM_Error error = ERR_NONE;
 	int i, j;
-	unsigned char FileName[100], FullName[400], ext[4], buffer[64], buffer2[400];
+	unsigned char FileName[100], FullName[PATH_MAX], ext[4], buffer[64], buffer2[400];
 	gboolean done;
 	FILE *file;
 	size_t locations_size = 0, locations_pos = 0;
 #ifdef GSM_ENABLE_BACKUP
-	GSM_SMS_Backup backup;
+	GSM_SMS_Backup *backup;
 #endif
 	*Locations = NULL;
 
@@ -98,12 +108,18 @@ static GSM_Error SMSDFiles_SaveInboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDConfi
 				SMSD_Log(DEBUG_ERROR, Config, "Saving in detail format not compiled in!");
 
 #else
-				for (j = 0; j < sms->Number; j++) {
-					backup.SMS[j] = &sms->SMS[j];
+				backup = malloc(sizeof(GSM_SMS_Backup));
+				if (backup == NULL) {
+					return ERR_MOREMEMORY;
 				}
-				backup.SMS[sms->Number] = NULL;
-				error = GSM_AddSMSBackupFile(FullName, &backup);
+
+				for (j = 0; j < sms->Number; j++) {
+					backup->SMS[j] = &sms->SMS[j];
+				}
+				backup->SMS[sms->Number] = NULL;
+				error = GSM_AddSMSBackupFile(FullName, backup);
 				done = TRUE;
+				free(backup);
 #endif
 			} else {
 				file = fopen(FullName, "wb");
@@ -164,15 +180,16 @@ static GSM_Error SMSDFiles_FindOutboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDConf
 {
 	GSM_MultiPartSMSInfo SMSInfo;
 	GSM_WAPBookmark Bookmark;
-	char FileName[100], FullName[400];
+	char FileName[100], FullName[PATH_MAX];
 	unsigned char Buffer[(GSM_MAX_SMS_LENGTH * GSM_MAX_MULTI_SMS + 1) * 2];
 	unsigned char Buffer2[(GSM_MAX_SMS_LENGTH * GSM_MAX_MULTI_SMS + 1) * 2];
 	FILE *File;
-	int i, len, phlen;
+	int i;
+	size_t len, phlen;
 	char *pos1, *pos2, *options = NULL;
 	gboolean backup = FALSE;
 #ifdef GSM_ENABLE_BACKUP
-	GSM_SMS_Backup smsbackup;
+	GSM_SMS_Backup *smsbackup;
 	GSM_Error error;
 #endif
 #ifdef WIN32
@@ -252,21 +269,28 @@ static GSM_Error SMSDFiles_FindOutboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDConf
 
 	if (backup) {
 #ifdef GSM_ENABLE_BACKUP
+		smsbackup = malloc(sizeof(GSM_SMS_Backup));
+		if (smsbackup == NULL) {
+			return ERR_MOREMEMORY;
+		}
+
 		/* Remember ID */
 		strcpy(ID, FileName);
 		/* Load backup */
-		GSM_ClearSMSBackup(&smsbackup);
-		error = GSM_ReadSMSBackupFile(FullName, &smsbackup);
+		GSM_ClearSMSBackup(smsbackup);
+		error = GSM_ReadSMSBackupFile(FullName, smsbackup);
 		if (error != ERR_NONE) {
+			free(smsbackup);
 			return error;
 		}
 		/* Copy it to our message */
 		sms->Number = 0;
-		for (i = 0; smsbackup.SMS[i] != NULL; i++) {
-			sms->SMS[sms->Number++] = *smsbackup.SMS[i];
+		for (i = 0; smsbackup->SMS[i] != NULL; i++) {
+			sms->SMS[sms->Number++] = *(smsbackup->SMS[i]);
 		}
 		/* Free memory */
-		GSM_FreeSMSBackup(&smsbackup);
+		GSM_FreeSMSBackup(smsbackup);
+		free(smsbackup);
 
 		/* Set delivery report flag */
 		if (sms->SMS[0].PDU == SMS_Status_Report) {
@@ -274,7 +298,6 @@ static GSM_Error SMSDFiles_FindOutboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDConf
 		} else {
 			Config->currdeliveryreport = -1;
 		}
-
 #else
 		SMSD_Log(DEBUG_ERROR, Config, "SMS backup loading disabled at compile time!");
 		return ERR_DISABLED;
@@ -393,15 +416,21 @@ static GSM_Error SMSDFiles_FindOutboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDConf
 		} else if (i == 4) {
 			/* OUT<priority>_<phone number>_<serialno>.txt */
 			pos1 = strchr(FileName, '_');
+			if (pos1 == NULL) {
+				return ERR_BUG;
+			}
 			pos2 = strchr(++pos1, '_');
+			if (pos2 == NULL) {
+				return ERR_BUG;
+			}
 			phlen = strlen(pos1) - strlen(pos2);
 		} else {
 			/* something wrong */
 			return ERR_UNKNOWN;
 		}
 
-		for (len = 0; len < sms->Number; len++) {
-			EncodeUnicode(sms->SMS[len].Number, pos1, phlen);
+		for (i = 0; i < sms->Number; i++) {
+			EncodeUnicode(sms->SMS[i].Number, pos1, phlen);
 		}
 	}
 
@@ -434,66 +463,93 @@ static GSM_Error SMSDFiles_MoveSMS(GSM_MultiSMSMessage * sms UNUSED, GSM_SMSDCon
 {
 	FILE *oFile, *iFile;
 	size_t ilen = 0, olen = 0;
-	char Buffer[(GSM_MAX_SMS_LENGTH * GSM_MAX_MULTI_SMS + 1) * 2], ifilename[400], ofilename[400];
+	char Buffer[(GSM_MAX_SMS_LENGTH * GSM_MAX_MULTI_SMS + 1) * 2], ifilename[PATH_MAX], ofilename[PATH_MAX];
 	const char *sourcepath, *destpath;
+	GSM_Error error;
 
 	sourcepath = Config->outboxpath;
+
+	// Determine target based on status
 	if (sent) {
 		destpath = Config->sentsmspath;
 	} else {
 		destpath = Config->errorsmspath;
 	}
 
+	// Calculate source path
 	strcpy(ifilename, sourcepath);
 	strcat(ifilename, ID);
+	// Calculate destination path
 	strcpy(ofilename, destpath);
 	strcat(ofilename, ID);
 
+	// Do move only if paths are not same
 	if (strcmp(ifilename, ofilename) != 0) {
+		// First try rename
+		if (rename(ifilename, ofilename) == 0) {
+			SMSD_Log(DEBUG_INFO, Config, "Renamed %s to %s", ifilename, ofilename);
+			return ERR_NONE;
+		}
+
+		// Move across devices
+		if (errno != EXDEV) {
+			SMSD_LogErrno(Config, "Can not move file");
+			SMSD_Log(DEBUG_INFO, Config, "Could move %s to %s", ifilename, ofilename);
+			return ERR_UNKNOWN;
+		}
+
+		// Read source file
 		iFile = fopen(ifilename, "r");
 		if (iFile == NULL) {
+			SMSD_LogErrno(Config, "Can not open file");
 			return ERR_CANTOPENFILE;
 		}
 		ilen = fread(Buffer, 1, sizeof(Buffer), iFile);
 		fclose(iFile);
+
+		// Write target file
 		oFile = fopen(ofilename, "w");
 		if (oFile == NULL) {
+			SMSD_LogErrno(Config, "Can not open file");
 			return ERR_CANTOPENFILE;
 		}
 		olen = fwrite(Buffer, 1, ilen, oFile);
 		fclose(oFile);
 	}
-	if (ilen == olen) {
-		if ((strcmp(ifilename, "/") == 0) || (remove(ifilename) != 0)) {
-			SMSD_LogErrno(Config, "Can not delete file");
-			SMSD_Log(DEBUG_INFO, Config, "Could not delete %s", ifilename);
+
+	// Did we write all data?
+	error = ERR_NONE;
+	if (ilen != olen) {
+		SMSD_Log(DEBUG_ERROR, Config, "Failed to copy %s to %s", ifilename, ofilename);
+		error = ERR_UNKNOWN;
+	} else {
+		SMSD_Log(DEBUG_INFO, Config, "Copied %s to %s", ifilename, ofilename);
+	}
+
+	// Remove source file
+	if (error == ERR_NONE || alwaysDelete) {
+		if (unlink(ifilename) != 0) {
+			SMSD_LogErrno(Config, "Can not remove file");
 			return ERR_UNKNOWN;
 		}
-		return ERR_NONE;
-	} else {
-		SMSD_Log(DEBUG_INFO, Config, "Error copying SMS %s -> %s", ifilename, ofilename);
-		if (alwaysDelete) {
-			if ((strcmp(ifilename, "/") == 0) || (remove(ifilename) != 0)) {
-				SMSD_LogErrno(Config, "Can not delete file");
-				SMSD_Log(DEBUG_INFO, Config, "Could not delete %s", ifilename);
-			}
-		}
-		return ERR_UNKNOWN;
 	}
+
+	return error;
 }
 
 /* Adds SMS to Outbox */
 static GSM_Error SMSDFiles_CreateOutboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDConfig * Config, char *NewID)
 {
 	int i, j;
-	unsigned char FileName[100], FullName[400], ext[17], buffer[64], buffer2[400];
-	FILE *file;
+	int fd;
+	unsigned char FileName[100], FullName[PATH_MAX], ext[17], buffer[64], buffer2[400];
+	FILE *file = NULL;
 	time_t rawtime;
 	struct tm *timeinfo;
 
 #ifdef GSM_ENABLE_BACKUP
 	GSM_Error error;
-	GSM_SMS_Backup backup;
+	GSM_SMS_Backup *backup;
 #endif
 
 	j = 0;
@@ -508,22 +564,20 @@ static GSM_Error SMSDFiles_CreateOutboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDCo
 		}
 		DecodeUnicode(sms->SMS[i].Number, buffer2);
 
-		file = NULL;
-		do {
+		for (j = 0; j < 100; j++) {
 			sprintf(FileName,
 				"OUTC%04d%02d%02d_%02d%02d%02d_00_%s_sms%d.%s",
 				1900 + timeinfo->tm_year, timeinfo->tm_mon + 1, timeinfo->tm_mday, timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec, buffer2, j, ext);
 			strcpy(FullName, Config->outboxpath);
 			strcat(FullName, FileName);
-			if (file) {
-				fclose(file);
+			fd = open(FullName, O_CREAT | O_EXCL, 0644);
+			if (fd >= 0) {
+				close(fd);
+				break;
 			}
-			file = fopen(FullName, "r");
-		} while (file != NULL && (++j < 100));
+		}
 
-		if (file) {
-			fclose(file);
-			file = NULL;
+		if (j >= 100) {
 			if (i == 0) {
 				SMSD_Log(DEBUG_ERROR, Config, "Cannot save %s. No available file names", FileName);
 				return ERR_CANTOPENFILE;
@@ -535,11 +589,18 @@ static GSM_Error SMSDFiles_CreateOutboxSMS(GSM_MultiSMSMessage * sms, GSM_SMSDCo
 			SMSD_Log(DEBUG_ERROR, Config, "Saving in detail format not compiled in!");
 
 #else
-			for (j = 0; j < sms->Number; j++) {
-				backup.SMS[j] = &sms->SMS[j];
+			backup = malloc(sizeof(GSM_SMS_Backup));
+			if (backup == NULL) {
+				return ERR_MOREMEMORY;
 			}
-			backup.SMS[sms->Number] = NULL;
-			error = GSM_AddSMSBackupFile(FullName, &backup);
+
+			for (j = 0; j < sms->Number; j++) {
+				backup->SMS[j] = &sms->SMS[j];
+			}
+			backup->SMS[sms->Number] = NULL;
+			error = GSM_AddSMSBackupFile(FullName, backup);
+
+			free(backup);
 
 			if (error != ERR_NONE) {
 				return error;
@@ -593,10 +654,10 @@ fail:
 static GSM_Error SMSDFiles_AddSentSMSInfo(GSM_MultiSMSMessage * sms UNUSED, GSM_SMSDConfig * Config, char *ID UNUSED, int Part, GSM_SMSDSendingError err, int TPMR)
 {
 	FILE *file;
-	ssize_t flen = 0, filesize;
-	unsigned char FullPath[400];
-	char *Buffer = NULL;
-	char *lineStart, *lineEnd;
+	GSM_File GSMFile;
+	GSM_Error error;
+	unsigned char FullPath[PATH_MAX];
+	unsigned char *lineStart, *lineEnd;
 	/* MessageReference TPMR maximum is "255" */
 	char MessageReferenceBuffer[sizeof("MessageReference = \n") + 4];
 
@@ -608,60 +669,48 @@ static GSM_Error SMSDFiles_AddSentSMSInfo(GSM_MultiSMSMessage * sms UNUSED, GSM_
 	strcpy(FullPath, Config->outboxpath);
 	strcat(FullPath, Config->SMSID);
 
-	file = fopen(FullPath, "r");
+	// Read file content
+	GSMFile.Buffer = NULL;
+	GSMFile.Used = 0;
+	error = GSM_ReadFile(FullPath, &GSMFile);
 
-	if (file == NULL) {
-		return ERR_CANTOPENFILE;
+	if (error != ERR_NONE) {
+		SMSD_Log(DEBUG_ERROR, Config, "AddSentSMSInfo: Failed to read file!");
+		free(GSMFile.Buffer);
+		return error;
 	}
 
-	fseek(file, 0, SEEK_END);
-	filesize = ftell(file);
-	if (filesize < 0) {
-		fclose(file);
-		return ERR_CANTOPENFILE;
-	}
-	fseek(file, 0, SEEK_SET);
+	// Allocate additional space for trailing zero
+	GSMFile.Buffer = realloc(GSMFile.Buffer, GSMFile.Used + 1);
 
-	Buffer = malloc(filesize + 200);
-	if (Buffer == NULL) {
-		fclose(file);
+	if (GSMFile.Buffer == NULL) {
 		return ERR_MOREMEMORY;
 	}
 
-	flen = fread(Buffer, 1, filesize, file);
-	fclose(file);
+	GSMFile.Buffer[GSMFile.Used] = '\0';
 
-	if (flen != filesize) {
-		free(Buffer);
-		return ERR_CANTOPENFILE;
-	}
-	Buffer[flen] = '\0';
-
-	lineStart = Buffer;
-	lineEnd = strchr(lineStart, '\n');
-
-	while (lineEnd && lineStart - Buffer + 1 < flen) {
-		lineStart = lineEnd + 1;
-		lineEnd = strchr(lineStart, '\n');
-
-		if(!strncmp("MessageReference = ", lineStart, 19)) {
-			break;
-		}
-	}
+	lineStart = strstr(GSMFile.Buffer, "\nMessageReference = ");
 
 	/* Message reference not found */
-	if (lineEnd == NULL || strncmp("MessageReference = ", lineStart, 19) == 0) {
-		free(Buffer);
+	if (lineStart == NULL) {
+		free(GSMFile.Buffer);
 		return ERR_NONE;
+	}
+	lineStart++;
+	lineEnd = strchr(GSMFile.Buffer, '\n');
+	/* End of buffer? */
+	if (lineEnd == NULL) {
+		lineEnd = GSMFile.Buffer + GSMFile.Used;
 	}
 
 	file = fopen(FullPath, "w");
 	if (file == NULL) {
-		free(Buffer);
+		SMSD_LogErrno(Config,  "AddSentSMSInfo: Failed to open file for writing");
+		free(GSMFile.Buffer);
 		return ERR_CANTOPENFILE;
 	}
 
-	chk_fwrite(Buffer, lineStart - Buffer, 1, file);
+	chk_fwrite(GSMFile.Buffer, lineStart - GSMFile.Buffer, 1, file);
 
 	snprintf(MessageReferenceBuffer, sizeof(MessageReferenceBuffer),
 		 "MessageReference = %d\n", TPMR);
@@ -669,19 +718,18 @@ static GSM_Error SMSDFiles_AddSentSMSInfo(GSM_MultiSMSMessage * sms UNUSED, GSM_
 
 	chk_fwrite(MessageReferenceBuffer, strlen(MessageReferenceBuffer), 1, file);
 
-	chk_fwrite(lineEnd + 1, (Buffer - lineEnd) + flen - 1, 1, file);
+	chk_fwrite(lineEnd + 1, (GSMFile.Buffer - lineEnd) + GSMFile.Used - 1, 1, file);
 
 	fclose(file);
 
-	free(Buffer);
+	free(GSMFile.Buffer);
 	return ERR_NONE;
 fail:
+	SMSD_LogErrno(Config,  "AddSentSMSInfo: Failed to write");
 	if (file) {
 		fclose(file);
 	}
-	if (Buffer) {
-		free(Buffer);
-	}
+	free(GSMFile.Buffer);
 	return ERR_WRITING_FILE;
 }
 

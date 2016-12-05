@@ -5,11 +5,14 @@
 
 #include "../protocol.h"
 
+GSM_Error AT_StateMachine(GSM_StateMachine *s, unsigned char rx_char);
+GSM_Error AT_Initialise(GSM_StateMachine *s);
+
 typedef struct {
 	GSM_Protocol_Message 	Msg;
 	gboolean 			wascrlf;
-	int			LineStart,LineEnd;
-	int			SpecialAnswerLines,SpecialAnswerStart;
+	size_t			LineStart, LineEnd;
+	size_t			SpecialAnswerLines, SpecialAnswerStart;
 
 	gboolean			EditMode;	/* wait for modem answer or not */
 	gboolean			FastWrite;

@@ -15,9 +15,9 @@
 #include "services/sql-core.h"
 #endif
 
-#define SMSD_SHM_KEY (0xface)
-#define SMSD_SHM_VERSION (1)
-#define SMSD_DB_VERSION (15)
+#define SMSD_SHM_VERSION (2)
+#define SMSD_SHM_KEY (0xfa << 16 || SMSD_SHM_VERSION)
+#define SMSD_DB_VERSION (16)
 
 #include "log.h"
 
@@ -91,6 +91,7 @@ struct _GSM_SMSDConfig {
 	gboolean hangupcalls;
 	gboolean checkbattery;
 	gboolean checksignal;
+	gboolean checknetwork;
 	gboolean enable_send;
 	gboolean enable_receive;
 	unsigned int maxretries;
@@ -150,6 +151,13 @@ struct _GSM_SMSDConfig {
 	SQL_conn conn;
 	/* configurable SQL queries */
 	char * SMSDSQL_queries[SQL_QUERY_LAST_NO];
+
+	const char *table_gammu;
+	const char *table_inbox;
+	const char *table_sentitems;
+	const char *table_outbox;
+	const char *table_outbox_multipart;
+	const char *table_phones;
 #endif
 
 	INI_Section 		*smsdcfgfile;

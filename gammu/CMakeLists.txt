@@ -4,8 +4,6 @@
 
 project (gammu-binary C)
 
-include(GammuTuneCompiler)
-
 if (HAVE_WNOUNUSEDPARAMETER)
     set (CMAKE_C_FLAGS     "${CMAKE_C_FLAGS} -Wno-unused-parameter")
 endif (HAVE_WNOUNUSEDPARAMETER)
@@ -20,7 +18,6 @@ set (BINARY_SRC
     depend/nokia/dct4.c
     depend/siemens/dsiemens.c
     depend/siemens/chiffre.c
-    sniff.c
     common.c
     memory.c
     message.c
@@ -36,6 +33,10 @@ if (WITH_BACKUP)
     list(APPEND BINARY_SRC backup.c backupsms.c)
 endif (WITH_BACKUP)
 
+if (DEBUG)
+    list(APPEND BINARY_SRC sniff.c)
+endif()
+
 
 # Hides default case in switch, to allow checking whether all cases are handled.
 if(DEBUG)
@@ -44,6 +45,7 @@ endif(DEBUG)
 
 # Gammu program
 add_executable (gammu ${BINARY_SRC})
+add_coverage (gammu)
 
 target_link_libraries (gammu libGammu)
 target_link_libraries (gammu messagedisplay)

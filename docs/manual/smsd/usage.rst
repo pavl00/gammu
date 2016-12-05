@@ -37,15 +37,22 @@ Alternatively you can get the same functionality from libGammu using
 :c:func:`SMSD_GetStatus` or python-gammu using
 :meth:`gammu.smsd.SMSD.GetStatus`.
 
+.. _reporting-bugs-smsd:
+
 Reporting Bugs
 --------------
 
 Please report bugs to <https://github.com/gammu/gammu/issues>.
 
-Before reporting a bug, please enable verbose logging in SMSD configuration:
-
+Before reporting a bug, please enable verbose logging in SMSD configuration
+by :config:option:`DebugLevel` and :config:option:`LogFile`:
 
 .. code-block:: ini
+
+    [gammu]
+    connection = your connection setting
+    port = your port name
+    logformat = textalldate
 
     [smsd]
     debuglevel = 255

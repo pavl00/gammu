@@ -9,14 +9,29 @@
 #    POSTGRES_LIBRARY
 
 IF(WIN32)
-  IF (NOT POSTGRES_INCLUDE_DIR)
-    FIND_PATH(POSTGRES_INCLUDE_DIR libpq-fe.h /usr/local/include /usr/include c:/msys/local/include)
-  ENDIF (NOT POSTGRES_INCLUDE_DIR)
+    FIND_PATH(POSTGRES_INCLUDE_DIR libpq-fe.h
+        /usr/local/include /usr/include c:/msys/local/include
+        $ENV{POSTGRESQL_PATH}/include/server
+        $ENV{POSTGRESQL_PATH}/include
+        "C:/Program Files/PostgreSQL/*/include/server"
+        $ENV{ProgramFiles}/PostgreSQL/*/include/server
+        $ENV{SystemDrive}/PostgreSQL/*/include/server
+        "C:/Program Files/PostgreSQL/*/include"
+        $ENV{ProgramFiles}/PostgreSQL/*/include
+        $ENV{SystemDrive}/PostgreSQL/*/include
+    )
 
-  IF (NOT POSTGRES_LIBRARY)
-    FIND_LIBRARY(POSTGRES_LIBRARY NAMES pq PATH /usr/local/lib /usr/lib c:/msys/local/lib)
-  ENDIF (NOT POSTGRES_LIBRARY)
-
+    FIND_LIBRARY(POSTGRES_LIBRARY NAMES libpq pq PATHS
+     /usr/local/lib /usr/lib c:/msys/local/lib
+     $ENV{POSTGRESQL_PATH}/lib
+     $ENV{ProgramFiles}/PostgreSQL/*/lib
+     $ENV{SystemDrive}/PostgreSQL/*/lib
+     "C:/Program Files/PostgreSQL/*/lib"
+     $ENV{POSTGRESQL_PATH}/lib/ms
+     $ENV{ProgramFiles}/PostgreSQL/*/lib/ms
+     $ENV{SystemDrive}/PostgreSQL/*/lib/ms
+     "C:/Program Files/PostgreSQL/*/lib/ms"
+    )
 ELSE(WIN32)
   IF(UNIX) 
 
@@ -60,7 +75,9 @@ ELSE(WIN32)
 ENDIF(WIN32)
 
 IF (POSTGRES_INCLUDE_DIR AND POSTGRES_LIBRARY)
-   SET(POSTGRES_FOUND TRUE CACHE INTERNAL "PostgreSQL found")
+    include(MacroCheckLibraryWorks)
+    CHECK_LIBRARY_WORKS("libpq-fe.h" "PQclear(NULL);" "${POSTGRES_INCLUDE_DIR}" "${POSTGRES_LIBRARY}" "POSTGRES_WORKS")
+   SET(POSTGRES_FOUND ${POSTGRES_WORKS} CACHE INTERNAL "PostgreSQL found")
 ENDIF (POSTGRES_INCLUDE_DIR AND POSTGRES_LIBRARY)
 
 
@@ -73,9 +90,6 @@ IF (POSTGRES_FOUND)
    check_library_exists("${POSTGRES_LIBRARY}" PQescapeStringConn "" HAVE_PQESCAPESTRINGCONN)
 
 ELSE (POSTGRES_FOUND)
-
-   #SET (POSTGRES_INCLUDE_DIR "")
-   #SET (POSTGRES_LIBRARY "")
 
    IF (POSTGRES_FIND_REQUIRED)
       MESSAGE(FATAL_ERROR "Could not find PostgreSQL")

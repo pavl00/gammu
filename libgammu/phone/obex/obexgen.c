@@ -124,10 +124,10 @@ static GSM_Error OBEXGEN_ReplyConnect(GSM_Protocol_Message *msg, GSM_StateMachin
 		/* Sample: 10 |00 |20 |00 |CB |00 |00 |00 |10 |4AJ|00 |08 |4DM|4FO|42B|45E|58X */
 		/* Byte 0 - OBEX version */
 		/* Byte 1 - flags */
-		/* Bytes 2,3 - maximal size of packet */
+		/* Bytes 2,3 - maximum size of packet */
 		if (msg->Length >= 4) {
 			s->Phone.Data.Priv.OBEXGEN.FrameSize = msg->Buffer[2]*256 + msg->Buffer[3];
-			smprintf(s,"Maximal size of frame is %i 0x%x\n",s->Phone.Data.Priv.OBEXGEN.FrameSize,s->Phone.Data.Priv.OBEXGEN.FrameSize);
+			smprintf(s,"Maximum size of frame is %i 0x%x\n",s->Phone.Data.Priv.OBEXGEN.FrameSize,s->Phone.Data.Priv.OBEXGEN.FrameSize);
 		}
 		/* Remaining bytes - optional headers */
 		for (i = 4; i < msg->Length;) {
@@ -747,7 +747,7 @@ static GSM_Error OBEXGEN_ReplyAddFilePart(GSM_Protocol_Message *msg, GSM_StateMa
 	return ERR_UNKNOWNRESPONSE;
 }
 
-GSM_Error OBEXGEN_PrivAddFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int *Handle UNUSED, gboolean HardDelete)
+GSM_Error OBEXGEN_PrivAddFilePart(GSM_StateMachine *s, GSM_File *File, size_t *Pos, int *Handle UNUSED, gboolean HardDelete)
 {
 	GSM_Error		error;
 	size_t			j;
@@ -815,22 +815,22 @@ GSM_Error OBEXGEN_PrivAddFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos,
 		j = File->Used - *Pos;
 		/* End of file body block */
 		OBEXAddBlock(req, &Current, 0x49, File->Buffer+(*Pos), j);
-		smprintf(s, "Adding last file part %i %ld\n", *Pos, (long)j);
+		smprintf(s, "Adding last file part %ld %ld\n", (long)*Pos, (long)j);
 		*Pos = *Pos + j;
-		error = GSM_WaitFor (s, req, Current, 0x82, OBEX_TIMEOUT * 10, ID_AddFile);
+		error = GSM_WaitFor (s, req, (long)Current, 0x82, OBEX_TIMEOUT * 10, ID_AddFile);
 		if (error != ERR_NONE) return error;
 		return ERR_EMPTY;
 	} else {
 		/* File body block */
 		OBEXAddBlock(req, &Current, 0x48, File->Buffer+(*Pos), j);
-		smprintf(s, "Adding file part %i %ld\n", *Pos, (long)j);
+		smprintf(s, "Adding file part %ld %ld\n", (long)*Pos, (long)j);
 		*Pos = *Pos + j;
-		error=GSM_WaitFor (s, req, Current, 0x02, OBEX_TIMEOUT * 10, ID_AddFile);
+		error=GSM_WaitFor (s, req, (long)Current, 0x02, OBEX_TIMEOUT * 10, ID_AddFile);
 	}
 	return error;
 }
 
-GSM_Error OBEXGEN_AddFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int *Handle)
+GSM_Error OBEXGEN_AddFilePart(GSM_StateMachine *s, GSM_File *File, size_t *Pos, int *Handle)
 {
 	GSM_Error		error;
 
@@ -850,7 +850,7 @@ GSM_Error OBEXGEN_AddFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int
 	return error;
 }
 
-GSM_Error OBEXGEN_SendFilePart(GSM_StateMachine *s, GSM_File *File, int *Pos, int *Handle)
+GSM_Error OBEXGEN_SendFilePart(GSM_StateMachine *s, GSM_File *File, size_t *Pos, int *Handle)
 {
 	GSM_Error		error;
 
@@ -1067,7 +1067,7 @@ static GSM_Error OBEXGEN_PrivGetFilePart(GSM_StateMachine *s, GSM_File *File, gb
 	return ERR_EMPTY;
 }
 
-GSM_Error OBEXGEN_GetFilePart(GSM_StateMachine *s, GSM_File *File, int *Handle, int *Size)
+GSM_Error OBEXGEN_GetFilePart(GSM_StateMachine *s, GSM_File *File, int *Handle, size_t *Size)
 {
 	GSM_Error		error;
 
@@ -1395,7 +1395,8 @@ GSM_Error OBEXGEN_SetFile(GSM_StateMachine *s, const char *FileName, const unsig
 {
 	GSM_Error	error = ERR_NONE;
 	GSM_File 	File;
-	int		Pos = 0, Handle;
+	size_t		Pos = 0;
+	int Handle;
 
 	/* Fill file structure */
 	EncodeUnicode(File.ID_FullName, FileName, strlen(FileName));
@@ -1612,7 +1613,7 @@ int OBEXGEN_GetFirstFreeLocation(int **IndexStorage, int *IndexCount) {
 	int i;
 	int max = -1;
 
-	/* Find maximal used location */
+	/* Find maximum used location */
 	for (i = 0; i < *IndexCount; i++) {
 		if (*IndexStorage[i] > max) {
 			max = (*IndexStorage)[i];
@@ -3923,7 +3924,8 @@ GSM_Phone_Functions OBEXGENPhone = {
 	NOTSUPPORTED,			/* 	SetGPRSAccessPoint	*/
 	NOTSUPPORTED,			/* 	GetScreenshot		*/
 	NOTSUPPORTED,			/* 	SetPower		*/
-	NOTSUPPORTED			/* 	PostConnect	*/
+	NOTSUPPORTED,			/* 	PostConnect	*/
+	NONEFUNCTION			/*	PreAPICall		*/
 };
 
 #endif
